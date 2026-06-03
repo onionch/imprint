@@ -115,7 +115,9 @@ export default function CheckinPage() {
       clearSearch();
       inputRef.current?.focus();
 
+      console.log('[auto-print] auto_print:', currentMeeting.auto_print, 'type:', typeof currentMeeting.auto_print, 'full:', JSON.stringify(currentMeeting));
       if (!currentMeeting.auto_print) {
+        message.info('自动打印未开启（auto_print=' + currentMeeting.auto_print + '）');
         return;
       }
 

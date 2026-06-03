@@ -31,6 +31,7 @@ pub struct TemplateElement {
     pub y_mm: f64,
     pub width_mm: f64,
     pub height_mm: f64,
+    #[serde(default)]
     pub content: String,
     #[serde(default)]
     pub style: serde_json::Value,

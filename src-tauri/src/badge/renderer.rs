@@ -37,6 +37,7 @@ pub fn render_badge_html(
             "qrcode" => render_qrcode_placeholder(&el, &content, x_px, y_px, w_px, h_px),
             "rectangle" => render_rectangle(&el, x_px, y_px, w_px, h_px),
             "image" => render_image_placeholder(&el, x_px, y_px, w_px, h_px),
+            "line" => render_line(&el, x_px, y_px, w_px, h_px),
             _ => String::new(),
         };
 
@@ -199,6 +200,19 @@ fn render_image_placeholder(el: &TemplateElement, x: i32, y: i32, w: i32, h: i32
     format!(
         r#"<div class="element" style="left:{}px;top:{}px;width:{}px;height:{}px;opacity:{};"></div>"#,
         x, y, w, h, opacity
+    )
+}
+
+fn render_line(el: &TemplateElement, x: i32, y: i32, w: i32, h: i32) -> String {
+    let style = &el.style;
+    let color = style.get("color").and_then(|v| v.as_str()).unwrap_or("#CCCCCC");
+    let stroke_width_mm = style.get("stroke_width").and_then(|v| v.as_f64()).unwrap_or(0.5);
+    let stroke_width_px = ((stroke_width_mm * 300.0 / 25.4) as i32).max(1);
+    let height_px = h.max(stroke_width_px);
+
+    format!(
+        r#"<div class="element" style="left:{}px;top:{}px;width:{}px;height:{}px;border-top:{}px solid {};"></div>"#,
+        x, y, w.max(1), height_px, stroke_width_px, color
     )
 }
 
