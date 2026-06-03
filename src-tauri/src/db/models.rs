@@ -81,6 +81,18 @@ pub struct CreateAttendeeRequest {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct UpdateAttendeeRequest {
+    pub name: Option<String>,
+    pub id_card: Option<String>,
+    pub phone: Option<String>,
+    pub department: Option<String>,
+    pub position: Option<String>,
+    pub email: Option<String>,
+    pub checkin_code: Option<String>,
+    pub notes: Option<String>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct CheckinRecord {
     pub id: i64,
     pub attendee_id: i64,
@@ -173,6 +185,7 @@ pub struct ImportResult {
     pub batch_id: i64,
     pub success_count: i64,
     pub fail_count: i64,
+    pub skipped_count: i64,
     pub errors: Vec<ImportError>,
 }
 
@@ -192,6 +205,14 @@ pub struct ColumnMapping {
     pub position: Option<String>,
     pub email: Option<String>,
     pub checkin_code: Option<String>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum ImportDuplicateStrategy {
+    KeepAll,
+    SkipDuplicates,
+    OverwriteDuplicates,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

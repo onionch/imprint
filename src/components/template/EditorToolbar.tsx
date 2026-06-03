@@ -22,6 +22,7 @@ interface EditorToolbarProps {
   onSave: () => void;
   hasSelection: boolean;
   onPreview?: () => void;
+  previewLoading?: boolean;
 }
 
 function nextId(prefix: string): string {
@@ -36,6 +37,7 @@ export const EditorToolbar: React.FC<EditorToolbarProps> = ({
   onSave,
   hasSelection,
   onPreview,
+  previewLoading,
 }) => {
   const addText = () => {
     onAddElement({
@@ -139,7 +141,7 @@ export const EditorToolbar: React.FC<EditorToolbarProps> = ({
         <Button icon={<ZoomOutOutlined />} onClick={() => onScaleChange(Math.max(1, scale - 0.5))} />
         <span style={{ fontSize: 12, minWidth: 40, textAlign: 'center' }}>{Math.round(scale * 100)}%</span>
         <Button icon={<ZoomInOutlined />} onClick={() => onScaleChange(Math.min(4, scale + 0.5))} />
-        {onPreview && <Button icon={<EyeOutlined />} onClick={onPreview}>预览</Button>}
+        {onPreview && <Button icon={<EyeOutlined />} onClick={onPreview} loading={previewLoading}>预览</Button>}
         <Button type="primary" icon={<SaveOutlined />} onClick={onSave}>保存</Button>
       </Space>
     </div>

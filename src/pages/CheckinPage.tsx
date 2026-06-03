@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { Input, Card, Button, Space, Tag, Statistic, Row, Col, message, Modal, Form, Typography } from 'antd';
+import type { InputRef } from 'antd';
 import { CheckCircleOutlined, SearchOutlined, PlusOutlined, PrinterOutlined } from '@ant-design/icons';
 import { useMeetingStore } from '@/stores/meetingStore';
 import { useCheckinStore } from '@/stores/checkinStore';
@@ -30,7 +31,7 @@ export default function CheckinPage() {
   const [registerForm] = Form.useForm();
   const [checkinSuccess, setCheckinSuccess] = useState(false);
   const [printing, setPrinting] = useState(false);
-  const inputRef = useRef<InputRefLike>(null);
+  const inputRef = useRef<InputRef>(null);
 
   useEffect(() => {
     if (currentMeeting) {
@@ -156,8 +157,12 @@ export default function CheckinPage() {
 
     try {
       const attendee = await attendeeApi.addOnsite({
-        ...values,
         meeting_id: currentMeeting.id,
+        name: String(values.name ?? ''),
+        phone: typeof values.phone === 'string' ? values.phone : undefined,
+        id_card: typeof values.id_card === 'string' ? values.id_card : undefined,
+        department: typeof values.department === 'string' ? values.department : undefined,
+        position: typeof values.position === 'string' ? values.position : undefined,
       });
       await checkin(attendee.id, currentMeeting.id, 'manual');
       setShowRegister(false);
@@ -392,7 +397,3 @@ export default function CheckinPage() {
     </div>
   );
 }
-
-type InputRefLike = {
-  focus: () => void;
-} | null;

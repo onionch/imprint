@@ -27,6 +27,12 @@ pub fn add_attendee_onsite(db: State<DbState>, req: CreateAttendeeRequest) -> Re
 }
 
 #[tauri::command]
+pub fn update_attendee(db: State<DbState>, id: i64, req: UpdateAttendeeRequest) -> Result<Attendee, AppError> {
+    let conn = get_conn(&db)?;
+    repo_attendee::update_attendee(&conn, id, &req)
+}
+
+#[tauri::command]
 pub fn delete_attendee(db: State<DbState>, id: i64) -> Result<(), AppError> {
     let conn = get_conn(&db)?;
     repo_attendee::delete_attendee(&conn, id)
@@ -38,6 +44,7 @@ pub fn import_attendees(
     meeting_id: i64,
     file_path: String,
     mapping: ColumnMapping,
+    duplicate_strategy: Option<ImportDuplicateStrategy>,
 ) -> Result<ImportResult, AppError> {
     let conn = get_conn(&db)?;
 
@@ -55,7 +62,13 @@ pub fn import_attendees(
     let batch_id = repo_attendee::create_import_batch(&conn, meeting_id, &file_path, row_count)?;
 
     // Import attendees
-    let result = repo_attendee::import_attendees_batch(&conn, meeting_id, &attendees, batch_id)?;
+    let result = repo_attendee::import_attendees_batch(
+        &conn,
+        meeting_id,
+        &attendees,
+        batch_id,
+        duplicate_strategy.unwrap_or(ImportDuplicateStrategy::KeepAll),
+    )?;
 
     // Update batch record
     let error_json = if result.errors.is_empty() {

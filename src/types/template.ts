@@ -51,7 +51,7 @@ export interface TemplateElement {
   y_mm: number;
   width_mm: number;
   height_mm: number;
-  content: string;
+  content?: string;
   style: Record<string, unknown>;
   z_index: number;
 }

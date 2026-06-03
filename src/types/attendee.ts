@@ -28,6 +28,17 @@ export interface CreateAttendeeRequest {
   notes?: string;
 }
 
+export interface UpdateAttendeeRequest {
+  name?: string;
+  id_card?: string;
+  phone?: string;
+  department?: string;
+  position?: string;
+  email?: string;
+  checkin_code?: string;
+  notes?: string;
+}
+
 export interface ColumnMapping {
   name?: string;
   id_card?: string;
@@ -36,4 +47,20 @@ export interface ColumnMapping {
   position?: string;
   email?: string;
   checkin_code?: string;
+}
+
+export type ImportDuplicateStrategy = 'keep_all' | 'skip_duplicates' | 'overwrite_duplicates';
+
+export interface AttendeeImportError {
+  row: number;
+  field: string;
+  message: string;
+}
+
+export interface AttendeeImportResult {
+  batch_id: number;
+  success_count: number;
+  fail_count: number;
+  skipped_count: number;
+  errors: AttendeeImportError[];
 }

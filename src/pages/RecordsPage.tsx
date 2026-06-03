@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Table, Card, Input, Select, Tag, Button, Space, message } from 'antd';
 import { SearchOutlined, PrinterOutlined, ExportOutlined } from '@ant-design/icons';
 import { useMeetingStore } from '@/stores/meetingStore';
@@ -8,13 +8,13 @@ import { exportRecords } from '@/utils/exportRecords';
 import dayjs from 'dayjs';
 
 export default function RecordsPage() {
-  const { currentMeeting, meetings } = useMeetingStore();
+  const { currentMeeting } = useMeetingStore();
   const [records, setRecords] = useState<CheckinRecord[]>([]);
   const [loading, setLoading] = useState(false);
   const [search, setSearch] = useState('');
   const [printFilter, setPrintFilter] = useState<string>('all');
 
-  const loadRecords = async () => {
+  const loadRecords = useCallback(async () => {
     if (!currentMeeting) return;
     setLoading(true);
     try {
@@ -24,11 +24,13 @@ export default function RecordsPage() {
       message.error(String(e));
     }
     setLoading(false);
-  };
+  }, [currentMeeting]);
 
   useEffect(() => {
-    loadRecords();
-  }, [currentMeeting]);
+    queueMicrotask(() => {
+      void loadRecords();
+    });
+  }, [loadRecords]);
 
   const handleReprint = async (record: CheckinRecord) => {
     if (!currentMeeting?.badge_template_id) {
@@ -44,18 +46,22 @@ export default function RecordsPage() {
     }
   };
 
-  const filteredRecords = records.filter((r) => {
-    if (printFilter === 'printed' && !r.badge_printed) return false;
-    if (printFilter === 'not_printed' && r.badge_printed) return false;
-    if (search) {
-      const q = search.toLowerCase();
-      return (
-        (r.attendee_name?.toLowerCase().includes(q)) ||
-        (r.attendee_department?.toLowerCase().includes(q))
-      );
-    }
-    return true;
-  });
+  const filteredRecords = useMemo(
+    () =>
+      records.filter((r) => {
+        if (printFilter === 'printed' && !r.badge_printed) return false;
+        if (printFilter === 'not_printed' && r.badge_printed) return false;
+        if (search) {
+          const q = search.toLowerCase();
+          return (
+            r.attendee_name?.toLowerCase().includes(q) ||
+            r.attendee_department?.toLowerCase().includes(q)
+          );
+        }
+        return true;
+      }),
+    [printFilter, records, search]
+  );
 
   const columns = [
     { title: '姓名', dataIndex: 'attendee_name', key: 'name', width: 120 },

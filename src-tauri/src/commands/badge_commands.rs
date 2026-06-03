@@ -82,3 +82,19 @@ pub fn render_badge_html(
         &qr_data,
     )
 }
+
+#[tauri::command]
+pub fn render_badge_html_preview(template_json: String) -> Result<String, AppError> {
+    crate::badge::render_badge_html(
+        &template_json,
+        "2026年度工作会议",
+        "北京国际会议中心",
+        "2026-06-03",
+        "张三",
+        "技术研发部",
+        "高级工程师",
+        "2026-06-03 08:30:00",
+        "A20260603001",
+        "BADGE:1:1:1748937600",
+    )
+}

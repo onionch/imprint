@@ -2,7 +2,8 @@ import { useState, useEffect } from 'react';
 import { Card, Row, Col, Button, Modal, Form, Input, Select, Space, message, Typography, Tag } from 'antd';
 import { PlusOutlined, DeleteOutlined, CopyOutlined, EyeOutlined, EditOutlined } from '@ant-design/icons';
 import { useTemplateStore } from '@/stores/templateStore';
-import type { CreateBadgeTemplateRequest, TemplateElement, TemplateSchema } from '@/types/template';
+import { badgeApi } from '@/services/api';
+import type { CreateBadgeTemplateRequest } from '@/types/template';
 import { EditorCanvas } from '@/components/template/EditorCanvas';
 import { EditorToolbar } from '@/components/template/EditorToolbar';
 import { PropertyPanel } from '@/components/template/PropertyPanel';
@@ -11,25 +12,33 @@ const { Text } = Typography;
 
 export default function TemplateEditorPage() {
   const {
-    templates, currentTemplate, editingSchema, selectedElementId, loading,
+    templates, currentTemplate, editingSchema, selectedElementId,
     loadTemplates, selectTemplate, createTemplate, deleteTemplate,
     saveSchemaToTemplate, setEditingSchema, setSelectedElementId,
     updateElement, addElement, removeElement,
   } = useTemplateStore();
 
   const [previewOpen, setPreviewOpen] = useState(false);
-  const [previewJson, setPreviewJson] = useState('');
+  const [previewHtml, setPreviewHtml] = useState('');
+  const [previewLoading, setPreviewLoading] = useState(false);
   const [createOpen, setCreateOpen] = useState(false);
   const [editorScale, setEditorScale] = useState(2);
   const [form] = Form.useForm();
 
   useEffect(() => {
     loadTemplates();
-  }, []);
+  }, [loadTemplates]);
 
   const selectedElement = editingSchema?.elements.find((e) => e.id === selectedElementId) || null;
 
-  const handleCreate = async (values: any) => {
+  const handleCreate = async (values: {
+    name: string;
+    description?: string;
+    paper_size?: string;
+    width_mm?: number;
+    height_mm?: number;
+    template_json_text: string;
+  }) => {
     try {
       const req: CreateBadgeTemplateRequest = {
         name: values.name,
@@ -92,10 +101,31 @@ export default function TemplateEditorPage() {
     }
   };
 
-  const handlePreview = () => {
-    if (editingSchema) {
-      setPreviewJson(JSON.stringify(editingSchema));
+  const handlePreview = async () => {
+    if (!editingSchema) return;
+    setPreviewLoading(true);
+    try {
+      const jsonStr = JSON.stringify(editingSchema);
+      const html = await badgeApi.renderPreview(jsonStr);
+      setPreviewHtml(html);
       setPreviewOpen(true);
+    } catch (e) {
+      message.error('预览生成失败: ' + String(e));
+    } finally {
+      setPreviewLoading(false);
+    }
+  };
+
+  const handleListPreview = async (templateJson: string) => {
+    setPreviewLoading(true);
+    try {
+      const html = await badgeApi.renderPreview(templateJson);
+      setPreviewHtml(html);
+      setPreviewOpen(true);
+    } catch (e) {
+      message.error('预览生成失败: ' + String(e));
+    } finally {
+      setPreviewLoading(false);
     }
   };
 
@@ -113,6 +143,11 @@ export default function TemplateEditorPage() {
 
   // Editor mode
   if (editingSchema && currentTemplate) {
+    const editorSchema = {
+      ...editingSchema.canvas,
+      elements: editingSchema.elements,
+    };
+
     return (
       <div>
         <div style={{ marginBottom: 8, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
@@ -135,12 +170,13 @@ export default function TemplateEditorPage() {
           onSave={handleSave}
           hasSelection={!!selectedElementId}
           onPreview={handlePreview}
+          previewLoading={previewLoading}
         />
 
         <div style={{ display: 'flex', gap: 16, marginTop: 8 }}>
           <div style={{ flex: 1 }}>
             <EditorCanvas
-              schema={editingSchema.canvas}
+              schema={editorSchema}
               selectedElementId={selectedElementId}
               onSelectElement={setSelectedElementId}
               onUpdateElement={updateElement}
@@ -149,7 +185,7 @@ export default function TemplateEditorPage() {
           </div>
           <div style={{ width: 240, border: '1px solid #d9d9d9', borderRadius: 4, overflowY: 'auto', maxHeight: 500 }}>
             <PropertyPanel
-              schema={editingSchema.canvas}
+              schema={editorSchema}
               selectedElement={selectedElement}
               onUpdateElement={updateElement}
               onUpdateSchema={handleUpdateSchema}
@@ -157,10 +193,17 @@ export default function TemplateEditorPage() {
           </div>
         </div>
 
-        <Modal title="模板 JSON 预览" open={previewOpen} onCancel={() => setPreviewOpen(false)} width={700} footer={null}>
-          <pre style={{ background: '#f5f5f5', padding: 16, borderRadius: 8, maxHeight: 500, overflow: 'auto', fontSize: 12 }}>
-            {(() => { try { return JSON.stringify(JSON.parse(previewJson), null, 2); } catch { return previewJson; } })()}
-          </pre>
+        <Modal title="效果预览" open={previewOpen} onCancel={() => setPreviewOpen(false)} width={600} footer={null} loading={previewLoading}>
+          {previewHtml && (
+            <div style={{ display: 'flex', justifyContent: 'center' }}>
+              <iframe
+                srcDoc={previewHtml}
+                style={{ width: '100%', height: 500, border: '1px solid #d9d9d9', borderRadius: 4 }}
+                sandbox=""
+                title="Badge Preview"
+              />
+            </div>
+          )}
         </Modal>
       </div>
     );
@@ -183,7 +226,7 @@ export default function TemplateEditorPage() {
               hoverable
               actions={[
                 <EditOutlined key="edit" onClick={() => selectTemplate(template)} />,
-                <EyeOutlined key="preview" onClick={() => { setPreviewJson(template.template_json); setPreviewOpen(true); }} />,
+                <EyeOutlined key="preview" onClick={() => handleListPreview(template.template_json)} />,
                 <CopyOutlined key="duplicate" onClick={() => handleDuplicate(template.id)} />,
                 <DeleteOutlined key="delete" onClick={() => handleDelete(template.id)} style={{ color: template.is_builtin ? '#ccc' : undefined }} />,
               ]}
@@ -212,10 +255,17 @@ export default function TemplateEditorPage() {
         ))}
       </Row>
 
-      <Modal title="模板 JSON 预览" open={previewOpen} onCancel={() => setPreviewOpen(false)} width={700} footer={null}>
-        <pre style={{ background: '#f5f5f5', padding: 16, borderRadius: 8, maxHeight: 500, overflow: 'auto', fontSize: 12 }}>
-          {(() => { try { return JSON.stringify(JSON.parse(previewJson), null, 2); } catch { return previewJson; } })()}
-        </pre>
+      <Modal title="效果预览" open={previewOpen} onCancel={() => setPreviewOpen(false)} width={600} footer={null} loading={previewLoading}>
+        {previewHtml && (
+          <div style={{ display: 'flex', justifyContent: 'center' }}>
+            <iframe
+              srcDoc={previewHtml}
+              style={{ width: '100%', height: 500, border: '1px solid #d9d9d9', borderRadius: 4 }}
+              sandbox=""
+              title="Badge Preview"
+            />
+          </div>
+        )}
       </Modal>
 
       <Modal title="新建模板" open={createOpen} onCancel={() => setCreateOpen(false)} onOk={() => form.submit()} width={700}>

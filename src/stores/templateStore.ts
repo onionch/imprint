@@ -75,6 +75,25 @@ export const useTemplateStore = create<TemplateState>((set, get) => ({
     }));
   },
 
+  saveSchemaToTemplate: async () => {
+    const { currentTemplate, editingSchema } = get();
+    if (!currentTemplate || !editingSchema) {
+      throw new Error('当前没有可保存的模板');
+    }
+
+    const template = await badgeApi.updateTemplate(currentTemplate.id, {
+      template_json: JSON.stringify(editingSchema),
+      paper_size: currentTemplate.paper_size,
+      width_mm: editingSchema.canvas.width_mm,
+      height_mm: editingSchema.canvas.height_mm,
+    });
+
+    set((s) => ({
+      templates: s.templates.map((t) => (t.id === template.id ? template : t)),
+      currentTemplate: template,
+    }));
+  },
+
   setEditingSchema: (schema) => set({ editingSchema: schema }),
   setSelectedElementId: (id) => set({ selectedElementId: id }),
 

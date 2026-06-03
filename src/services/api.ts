@@ -1,6 +1,13 @@
 import { invoke } from '@tauri-apps/api/core';
 import type { Meeting, CreateMeetingRequest, UpdateMeetingRequest } from '@/types/meeting';
-import type { Attendee, CreateAttendeeRequest, ColumnMapping } from '@/types/attendee';
+import type {
+  Attendee,
+  CreateAttendeeRequest,
+  UpdateAttendeeRequest,
+  ColumnMapping,
+  AttendeeImportResult,
+  ImportDuplicateStrategy,
+} from '@/types/attendee';
 import type { CheckinRecord, MeetingStats } from '@/types/checkin';
 import type { BadgeTemplate, CreateBadgeTemplateRequest, UpdateBadgeTemplateRequest } from '@/types/template';
 import type { PrinterInfo } from '@/types/printer';
@@ -19,10 +26,11 @@ export const attendeeApi = {
   search: (meetingId: number, query: string) => invoke<Attendee[]>('search_attendees', { meetingId, query }),
   list: (meetingId: number, limit?: number, offset?: number) => invoke<Attendee[]>('list_attendees', { meetingId, limit, offset }),
   addOnsite: (req: CreateAttendeeRequest) => invoke<Attendee>('add_attendee_onsite', { req }),
+  update: (id: number, req: UpdateAttendeeRequest) => invoke<Attendee>('update_attendee', { id, req }),
   delete: (id: number) => invoke<void>('delete_attendee', { id }),
-  import: (meetingId: number, filePath: string, mapping: ColumnMapping) =>
-    invoke<{ batch_id: number; success_count: number; fail_count: number; errors: Array<{ row: number; field: string; message: string }> }>(
-      'import_attendees', { meetingId, filePath, mapping }
+  import: (meetingId: number, filePath: string, mapping: ColumnMapping, duplicateStrategy?: ImportDuplicateStrategy) =>
+    invoke<AttendeeImportResult>(
+      'import_attendees', { meetingId, filePath, mapping, duplicateStrategy }
     ),
 };
 
@@ -48,6 +56,8 @@ export const badgeApi = {
   deleteTemplate: (id: number) => invoke<void>('delete_badge_template', { id }),
   renderHtml: (templateId: number, attendeeId: number, meetingId: number) =>
     invoke<string>('render_badge_html', { templateId, attendeeId, meetingId }),
+  renderPreview: (templateJson: string) =>
+    invoke<string>('render_badge_html_preview', { templateJson }),
 };
 
 // Print APIs
