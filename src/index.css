@@ -1,0 +1,34 @@
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body {
+  font-family: "Microsoft YaHei", "PingFang SC", "Noto Sans SC", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+#root {
+  width: 100%;
+  height: 100vh;
+}
+
+/* Ant Design overrides for consistent style */
+.ant-layout-header {
+  height: 56px;
+  line-height: 56px;
+}
+
+.ant-card {
+  border-radius: 8px;
+}
+
+.ant-btn-primary {
+  background-color: #1664FF;
+}
+
+.ant-menu-item-selected {
+  color: #1664FF !important;
+}

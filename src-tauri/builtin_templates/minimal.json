@@ -1,0 +1,44 @@
+{
+  "version": 1,
+  "canvas": {
+    "width_mm": 54,
+    "height_mm": 86,
+    "background_color": "#FFFFFF",
+    "border_radius_mm": 3
+  },
+  "elements": [
+    {
+      "id": "el_name",
+      "type": "text",
+      "x_mm": 4,
+      "y_mm": 20,
+      "width_mm": 46,
+      "height_mm": 24,
+      "content": "{{attendee_name}}",
+      "style": { "font_family": "Microsoft YaHei", "font_size_pt": 28, "font_weight": "bold", "color": "#1F2329", "text_align": "center", "vertical_align": "middle" },
+      "z_index": 1
+    },
+    {
+      "id": "el_dept",
+      "type": "text",
+      "x_mm": 4,
+      "y_mm": 46,
+      "width_mm": 46,
+      "height_mm": 8,
+      "content": "{{attendee_department}}",
+      "style": { "font_family": "Microsoft YaHei", "font_size_pt": 9, "font_weight": "normal", "color": "#8F959E", "text_align": "center", "vertical_align": "middle" },
+      "z_index": 2
+    },
+    {
+      "id": "el_qr",
+      "type": "qrcode",
+      "x_mm": 36,
+      "y_mm": 62,
+      "width_mm": 14,
+      "height_mm": 14,
+      "content": "{{qr_data}}",
+      "style": { "foreground_color": "#1F2329", "background_color": "#FFFFFF" },
+      "z_index": 3
+    }
+  ]
+}
