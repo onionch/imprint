@@ -2,9 +2,9 @@ import { useState, useEffect } from 'react';
 import { Card, Row, Col, Button, Modal, Form, Input, DatePicker, Select, message, Empty, Spin } from 'antd';
 import { PlusOutlined, EditOutlined, DeleteOutlined, CalendarOutlined, EnvironmentOutlined } from '@ant-design/icons';
 import dayjs from 'dayjs';
-import { useMeetingStore } from '@/stores/meetingStore';
-import { useTemplateStore } from '@/stores/templateStore';
-import type { CreateMeetingRequest } from '@/types/meeting';
+import { useMeetingStore } from './meetingStore';
+import { useTemplateStore } from '@/features/template';
+import type { CreateMeetingRequest } from '@/shared/types/meeting';
 
 export default function MeetingDashboard() {
   const { meetings, loading, loadMeetings, createMeeting, updateMeeting, deleteMeeting, selectMeeting } = useMeetingStore();
@@ -14,9 +14,9 @@ export default function MeetingDashboard() {
   const [form] = Form.useForm();
 
   useEffect(() => {
-    loadMeetings();
-    loadTemplates();
-  }, []);
+    void loadMeetings();
+    void loadTemplates();
+  }, [loadMeetings, loadTemplates]);
 
   const handleSubmit = async (values: CreateMeetingRequest & { start_time: dayjs.Dayjs; end_time: dayjs.Dayjs }) => {
     const req: CreateMeetingRequest = {

@@ -9,13 +9,11 @@ import {
   TeamOutlined,
   UnorderedListOutlined,
 } from '@ant-design/icons';
-import { useMeetingStore } from '@/stores/meetingStore';
-import MeetingDashboard from '@/pages/MeetingDashboard';
-import AttendeesPage from '@/pages/AttendeesPage';
-import CheckinPage from '@/pages/CheckinPage';
-import RecordsPage from '@/pages/RecordsPage';
-import TemplateEditorPage from '@/pages/TemplateEditorPage';
-import PrinterSettingsPage from '@/pages/PrinterSettingsPage';
+import { AttendeesPage } from '@/features/attendee';
+import { CheckinPage, RecordsPage } from '@/features/checkin';
+import { MeetingDashboard, useMeetingStore } from '@/features/meeting';
+import { PrinterSettingsPage } from '@/features/printing';
+import { TemplateEditorPage } from '@/features/template';
 
 const { Header, Sider, Content } = Layout;
 const { Title, Text } = Typography;

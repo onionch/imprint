@@ -1,6 +1,6 @@
 import { create } from 'zustand';
-import type { BadgeTemplate, TemplateSchema, TemplateElement } from '@/types/template';
-import { badgeApi } from '@/services/api';
+import type { BadgeTemplate, TemplateSchema, TemplateElement } from '@/shared/types/template';
+import { badgeApi } from '@/shared/api';
 
 interface TemplateState {
   templates: BadgeTemplate[];

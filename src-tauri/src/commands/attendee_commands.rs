@@ -1,40 +1,37 @@
 use tauri::State;
+use crate::commands::lock_db;
 use crate::db::DbState;
-use crate::db::repo_attendee;
 use crate::db::models::*;
+use crate::db::repo_attendee;
 use crate::error::AppError;
-
-fn get_conn<'a>(db: &'a State<'a, DbState>) -> Result<std::sync::MutexGuard<'a, rusqlite::Connection>, AppError> {
-    db.0.lock().map_err(|e| AppError::Database(rusqlite::Error::InvalidParameterName(e.to_string())))
-}
 
 #[tauri::command]
 pub fn search_attendees(db: State<DbState>, meeting_id: i64, query: String) -> Result<Vec<Attendee>, AppError> {
-    let conn = get_conn(&db)?;
+    let conn = lock_db(&db)?;
     repo_attendee::search_attendees(&conn, meeting_id, &query)
 }
 
 #[tauri::command]
 pub fn list_attendees(db: State<DbState>, meeting_id: i64, limit: Option<i64>, offset: Option<i64>) -> Result<Vec<Attendee>, AppError> {
-    let conn = get_conn(&db)?;
+    let conn = lock_db(&db)?;
     repo_attendee::list_attendees(&conn, meeting_id, limit.unwrap_or(100), offset.unwrap_or(0))
 }
 
 #[tauri::command]
 pub fn add_attendee_onsite(db: State<DbState>, req: CreateAttendeeRequest) -> Result<Attendee, AppError> {
-    let conn = get_conn(&db)?;
+    let conn = lock_db(&db)?;
     repo_attendee::add_attendee(&conn, &req)
 }
 
 #[tauri::command]
 pub fn update_attendee(db: State<DbState>, id: i64, req: UpdateAttendeeRequest) -> Result<Attendee, AppError> {
-    let conn = get_conn(&db)?;
+    let conn = lock_db(&db)?;
     repo_attendee::update_attendee(&conn, id, &req)
 }
 
 #[tauri::command]
 pub fn delete_attendee(db: State<DbState>, id: i64) -> Result<(), AppError> {
-    let conn = get_conn(&db)?;
+    let conn = lock_db(&db)?;
     repo_attendee::delete_attendee(&conn, id)
 }
 
@@ -46,7 +43,7 @@ pub fn import_attendees(
     mapping: ColumnMapping,
     duplicate_strategy: Option<ImportDuplicateStrategy>,
 ) -> Result<ImportResult, AppError> {
-    let conn = get_conn(&db)?;
+    let conn = lock_db(&db)?;
 
     // Read data from file
     let mut attendees = crate::import::read_data_with_mapping(&file_path, &mapping)?;

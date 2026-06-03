@@ -34,9 +34,9 @@ import {
   UserOutlined,
 } from '@ant-design/icons';
 import { open } from '@tauri-apps/plugin-dialog';
-import { attendeeApi, importApi } from '@/services/api';
-import { useMeetingStore } from '@/stores/meetingStore';
-import { downloadAttendeeImportTemplate, exportAttendees } from '@/utils/exportAttendees';
+import { useMeetingStore } from '@/features/meeting';
+import { attendeeApi, importApi } from '@/shared/api';
+import { downloadAttendeeImportTemplate, exportAttendees } from '@/shared/utils/exportAttendees';
 import type {
   Attendee,
   AttendeeImportResult,
@@ -44,7 +44,7 @@ import type {
   CreateAttendeeRequest,
   ImportDuplicateStrategy,
   UpdateAttendeeRequest,
-} from '@/types/attendee';
+} from '@/shared/types/attendee';
 
 const { Text, Title } = Typography;
 

@@ -2,11 +2,11 @@ import { useState, useRef, useEffect, useCallback } from 'react';
 import { Input, Card, Button, Space, Tag, Statistic, Row, Col, message, Modal, Form, Typography } from 'antd';
 import type { InputRef } from 'antd';
 import { CheckCircleOutlined, SearchOutlined, PlusOutlined, PrinterOutlined } from '@ant-design/icons';
-import { useMeetingStore } from '@/stores/meetingStore';
-import { useCheckinStore } from '@/stores/checkinStore';
-import { attendeeApi, checkinApi, badgeApi, printApi } from '@/services/api';
-import { captureHtmlToPng } from '@/utils/badgeCapture';
-import type { Attendee } from '@/types/attendee';
+import { useCheckinStore } from './checkinStore';
+import { useMeetingStore } from '@/features/meeting';
+import { attendeeApi, checkinApi, badgeApi, printApi } from '@/shared/api';
+import { captureHtmlToPng } from '@/shared/utils/badgeCapture';
+import type { Attendee } from '@/shared/types/attendee';
 
 const { Text } = Typography;
 
@@ -116,7 +116,6 @@ export default function CheckinPage() {
       clearSearch();
       inputRef.current?.focus();
 
-      console.log('[auto-print] auto_print:', currentMeeting.auto_print, 'type:', typeof currentMeeting.auto_print, 'full:', JSON.stringify(currentMeeting));
       if (!currentMeeting.auto_print) {
         message.info('自动打印未开启（auto_print=' + currentMeeting.auto_print + '）');
         return;

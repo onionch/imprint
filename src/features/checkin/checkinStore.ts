@@ -1,7 +1,7 @@
 import { create } from 'zustand';
-import type { Attendee } from '@/types/attendee';
-import type { CheckinRecord, MeetingStats } from '@/types/checkin';
-import { checkinApi, attendeeApi } from '@/services/api';
+import type { Attendee } from '@/shared/types/attendee';
+import type { CheckinRecord, MeetingStats } from '@/shared/types/checkin';
+import { checkinApi, attendeeApi } from '@/shared/api';
 
 interface CheckinState {
   searchResults: Attendee[];

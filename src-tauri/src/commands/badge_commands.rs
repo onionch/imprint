@@ -1,41 +1,38 @@
 use tauri::State;
+use crate::commands::lock_db;
 use crate::db::DbState;
 use crate::db::repo_meeting;
 use crate::db::repo_template;
 use crate::db::models::*;
 use crate::error::AppError;
 
-fn get_conn<'a>(db: &'a State<'a, DbState>) -> Result<std::sync::MutexGuard<'a, rusqlite::Connection>, AppError> {
-    db.0.lock().map_err(|e| AppError::Database(rusqlite::Error::InvalidParameterName(e.to_string())))
-}
-
 #[tauri::command]
 pub fn list_badge_templates(db: State<DbState>) -> Result<Vec<BadgeTemplate>, AppError> {
-    let conn = get_conn(&db)?;
+    let conn = lock_db(&db)?;
     repo_template::list_badge_templates(&conn)
 }
 
 #[tauri::command]
 pub fn get_badge_template(db: State<DbState>, id: i64) -> Result<BadgeTemplate, AppError> {
-    let conn = get_conn(&db)?;
+    let conn = lock_db(&db)?;
     repo_template::get_badge_template(&conn, id)
 }
 
 #[tauri::command]
 pub fn create_badge_template(db: State<DbState>, req: CreateBadgeTemplateRequest) -> Result<BadgeTemplate, AppError> {
-    let conn = get_conn(&db)?;
+    let conn = lock_db(&db)?;
     repo_template::create_badge_template(&conn, &req)
 }
 
 #[tauri::command]
 pub fn update_badge_template(db: State<DbState>, id: i64, req: UpdateBadgeTemplateRequest) -> Result<BadgeTemplate, AppError> {
-    let conn = get_conn(&db)?;
+    let conn = lock_db(&db)?;
     repo_template::update_badge_template(&conn, id, &req)
 }
 
 #[tauri::command]
 pub fn delete_badge_template(db: State<DbState>, id: i64) -> Result<(), AppError> {
-    let conn = get_conn(&db)?;
+    let conn = lock_db(&db)?;
     repo_template::delete_badge_template(&conn, id)
 }
 
@@ -46,7 +43,7 @@ pub fn render_badge_html(
     attendee_id: i64,
     meeting_id: i64,
 ) -> Result<String, AppError> {
-    let conn = get_conn(&db)?;
+    let conn = lock_db(&db)?;
 
     let template = repo_template::get_badge_template(&conn, template_id)?;
     let attendee = conn.query_row(

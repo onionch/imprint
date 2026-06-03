@@ -1,6 +1,6 @@
 import { create } from 'zustand';
-import type { Meeting } from '@/types/meeting';
-import { meetingApi } from '@/services/api';
+import type { Meeting } from '@/shared/types/meeting';
+import { meetingApi } from '@/shared/api';
 
 interface MeetingState {
   meetings: Meeting[];

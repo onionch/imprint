@@ -12,7 +12,7 @@ import {
   ZoomOutOutlined,
   EyeOutlined,
 } from '@ant-design/icons';
-import type { TemplateElement } from '@/types/template';
+import type { TemplateElement } from '@/shared/types/template';
 
 interface EditorToolbarProps {
   scale: number;

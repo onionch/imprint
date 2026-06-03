@@ -1,12 +1,10 @@
 import { useState, useEffect } from 'react';
 import { Card, Row, Col, Button, Modal, Form, Input, Select, Space, message, Typography, Tag } from 'antd';
 import { PlusOutlined, DeleteOutlined, CopyOutlined, EyeOutlined, EditOutlined } from '@ant-design/icons';
-import { useTemplateStore } from '@/stores/templateStore';
-import { badgeApi } from '@/services/api';
-import type { CreateBadgeTemplateRequest } from '@/types/template';
-import { EditorCanvas } from '@/components/template/EditorCanvas';
-import { EditorToolbar } from '@/components/template/EditorToolbar';
-import { PropertyPanel } from '@/components/template/PropertyPanel';
+import { EditorCanvas, EditorToolbar, PropertyPanel } from './components';
+import { useTemplateStore } from './templateStore';
+import { badgeApi } from '@/shared/api';
+import type { CreateBadgeTemplateRequest } from '@/shared/types/template';
 
 const { Text } = Typography;
 

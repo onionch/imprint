@@ -1,7 +1,7 @@
 import React from 'react';
 import { Form, Input, InputNumber, Select, Divider } from 'antd';
-import type { TemplateElement } from '@/types/template';
-import { TEMPLATE_VARIABLES } from '@/types/template';
+import type { TemplateElement } from '@/shared/types/template';
+import { TEMPLATE_VARIABLES } from '@/shared/types/template';
 
 interface PropertyPanelProps {
   schema: {

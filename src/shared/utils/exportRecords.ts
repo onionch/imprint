@@ -1,7 +1,7 @@
 import * as XLSX from 'xlsx';
 import { save } from '@tauri-apps/plugin-dialog';
 import { writeFile } from '@tauri-apps/plugin-fs';
-import type { CheckinRecord } from '@/types/checkin';
+import type { CheckinRecord } from '@/shared/types/checkin';
 
 interface ExportOptions {
   records: CheckinRecord[];
@@ -37,7 +37,7 @@ export async function exportRecords({ records, filename, format = 'xlsx' }: Expo
   const colWidths = Object.keys(data[0] || {}).map((key) => {
     const maxLen = Math.max(
       key.length * 2,
-      ...data.map((row) => String((row as any)[key] || '').length)
+      ...data.map((row) => String(row[key as keyof typeof row] || '').length)
     );
     return { wch: Math.min(maxLen + 2, 30) };
   });

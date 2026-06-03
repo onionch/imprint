@@ -1,7 +1,7 @@
 import * as XLSX from 'xlsx';
 import { save } from '@tauri-apps/plugin-dialog';
 import { writeFile } from '@tauri-apps/plugin-fs';
-import type { Attendee } from '@/types/attendee';
+import type { Attendee } from '@/shared/types/attendee';
 
 interface ExportAttendeesOptions {
   attendees: Attendee[];

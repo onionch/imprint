@@ -1,5 +1,5 @@
 import { invoke } from '@tauri-apps/api/core';
-import type { Meeting, CreateMeetingRequest, UpdateMeetingRequest } from '@/types/meeting';
+import type { Meeting, CreateMeetingRequest, UpdateMeetingRequest } from '@/shared/types/meeting';
 import type {
   Attendee,
   CreateAttendeeRequest,
@@ -7,10 +7,10 @@ import type {
   ColumnMapping,
   AttendeeImportResult,
   ImportDuplicateStrategy,
-} from '@/types/attendee';
-import type { CheckinRecord, MeetingStats } from '@/types/checkin';
-import type { BadgeTemplate, CreateBadgeTemplateRequest, UpdateBadgeTemplateRequest } from '@/types/template';
-import type { PrinterInfo } from '@/types/printer';
+} from '@/shared/types/attendee';
+import type { CheckinRecord, MeetingStats } from '@/shared/types/checkin';
+import type { BadgeTemplate, CreateBadgeTemplateRequest, UpdateBadgeTemplateRequest } from '@/shared/types/template';
+import type { PrinterInfo } from '@/shared/types/printer';
 
 // Meeting APIs
 export const meetingApi = {
