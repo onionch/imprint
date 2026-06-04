@@ -25,7 +25,9 @@ async function saveWorkbook(wb: XLSX.WorkBook, defaultName: string, format: 'xls
     ],
   });
 
-  if (!filePath) return;
+  if (!filePath) {
+    return;
+  }
 
   const output = XLSX.write(wb, { bookType: format, type: 'array' });
   await writeFile(filePath, new Uint8Array(output));
@@ -42,7 +44,11 @@ function buildColumnWidths(rows: Array<Record<string, string | number>>) {
   });
 }
 
-export async function exportAttendees({ attendees, filename, format = 'xlsx' }: ExportAttendeesOptions) {
+export async function exportAttendees({
+  attendees,
+  filename,
+  format = 'xlsx',
+}: ExportAttendeesOptions) {
   const rows = attendees.map((attendee, index) => ({
     序号: index + 1,
     姓名: attendee.name,
@@ -61,12 +67,18 @@ export async function exportAttendees({ attendees, filename, format = 'xlsx' }: 
   ws['!cols'] = buildColumnWidths(rows);
 
   const wb = XLSX.utils.book_new();
-  XLSX.utils.book_append_sheet(wb, ws, '参会者');
+  XLSX.utils.book_append_sheet(wb, ws, '参会人');
 
-  await saveWorkbook(wb, filename || `参会者名单_${new Date().toISOString().slice(0, 10)}`, format);
+  await saveWorkbook(
+    wb,
+    filename || `参会人名单_${new Date().toISOString().slice(0, 10)}`,
+    format
+  );
 }
 
-export async function downloadAttendeeImportTemplate({ filename }: TemplateOptions = {}) {
+export async function downloadAttendeeImportTemplate({
+  filename,
+}: TemplateOptions = {}) {
   const rows = [
     {
       姓名: '张三',
@@ -92,7 +104,7 @@ export async function downloadAttendeeImportTemplate({ filename }: TemplateOptio
   ws['!cols'] = buildColumnWidths(rows);
 
   const wb = XLSX.utils.book_new();
-  XLSX.utils.book_append_sheet(wb, ws, '参会者导入模板');
+  XLSX.utils.book_append_sheet(wb, ws, '参会人导入模板');
 
-  await saveWorkbook(wb, filename || '参会者导入模板', 'xlsx');
+  await saveWorkbook(wb, filename || '参会人导入模板', 'xlsx');
 }

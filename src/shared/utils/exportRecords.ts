@@ -14,20 +14,24 @@ function formatTime(iso: string | null | undefined): string {
   return new Date(iso).toLocaleString('zh-CN');
 }
 
-export async function exportRecords({ records, filename, format = 'xlsx' }: ExportOptions) {
-  const data = records.map((r, i) => ({
-    '序号': i + 1,
-    '姓名': r.attendee_name || '',
-    '部门': r.attendee_department || '',
-    '职位': r.attendee_position || '',
-    '手机': r.attendee_phone || '',
-    '签到码': r.checkin_code || '',
-    '签到状态': '已签到',
-    '签到时间': formatTime(r.checkin_time),
-    '签到方式': r.checkin_method || '',
-    '胸牌打印': r.badge_printed ? '已打印' : '未打印',
-    '打印时间': formatTime(r.badge_print_time),
-    '补打次数': r.reprint_count || 0,
+export async function exportRecords({
+  records,
+  filename,
+  format = 'xlsx',
+}: ExportOptions) {
+  const data = records.map((record, index) => ({
+    序号: index + 1,
+    姓名: record.attendee_name || '',
+    部门: record.attendee_department || '',
+    职位: record.attendee_position || '',
+    手机: record.attendee_phone || '',
+    签到码: record.checkin_code || '',
+    签到状态: '已签到',
+    签到时间: formatTime(record.checkin_time),
+    签到方式: record.checkin_method || '',
+    胸牌打印: record.badge_printed ? '已打印' : '未打印',
+    打印时间: formatTime(record.badge_print_time),
+    补打次数: record.reprint_count || 0,
   }));
 
   const ws = XLSX.utils.json_to_sheet(data);
@@ -46,16 +50,19 @@ export async function exportRecords({ records, filename, format = 'xlsx' }: Expo
   const ext = format === 'csv' ? 'csv' : 'xlsx';
   const defaultName = filename || `签到记录_${new Date().toISOString().slice(0, 10)}`;
 
-  // Use Tauri save dialog
   const filePath = await save({
     defaultPath: `${defaultName}.${ext}`,
-    filters: [{
-      name: format === 'csv' ? 'CSV 文件' : 'Excel 文件',
-      extensions: [ext],
-    }],
+    filters: [
+      {
+        name: format === 'csv' ? 'CSV 文件' : 'Excel 文件',
+        extensions: [ext],
+      },
+    ],
   });
 
-  if (!filePath) return; // User cancelled
+  if (!filePath) {
+    return;
+  }
 
   const bookType = format === 'csv' ? 'csv' : 'xlsx';
   const outputData = XLSX.write(wb, { bookType, type: 'array' });

@@ -1,19 +1,49 @@
-import { useState, useEffect } from 'react';
-import { Card, Row, Col, Button, Modal, Form, Input, Select, Space, message, Typography, Tag } from 'antd';
-import { PlusOutlined, DeleteOutlined, CopyOutlined, EyeOutlined, EditOutlined } from '@ant-design/icons';
+import { useEffect, useMemo, useState } from 'react';
+import {
+  Button,
+  Card,
+  Col,
+  Form,
+  Input,
+  Modal,
+  Row,
+  Select,
+  Space,
+  Statistic,
+  Tag,
+  Typography,
+  message,
+} from 'antd';
+import {
+  CopyOutlined,
+  DeleteOutlined,
+  EditOutlined,
+  EyeOutlined,
+  PlusOutlined,
+} from '@ant-design/icons';
 import { EditorCanvas, EditorToolbar, PropertyPanel } from './components';
 import { useTemplateStore } from './templateStore';
 import { badgeApi } from '@/shared/api';
 import type { CreateBadgeTemplateRequest } from '@/shared/types/template';
 
-const { Text } = Typography;
+const { Title, Text, Paragraph } = Typography;
 
 export default function TemplateEditorPage() {
   const {
-    templates, currentTemplate, editingSchema, selectedElementId,
-    loadTemplates, selectTemplate, createTemplate, deleteTemplate,
-    saveSchemaToTemplate, setEditingSchema, setSelectedElementId,
-    updateElement, addElement, removeElement,
+    templates,
+    currentTemplate,
+    editingSchema,
+    selectedElementId,
+    loadTemplates,
+    selectTemplate,
+    createTemplate,
+    deleteTemplate,
+    saveSchemaToTemplate,
+    setEditingSchema,
+    setSelectedElementId,
+    updateElement,
+    addElement,
+    removeElement,
   } = useTemplateStore();
 
   const [previewOpen, setPreviewOpen] = useState(false);
@@ -21,13 +51,22 @@ export default function TemplateEditorPage() {
   const [previewLoading, setPreviewLoading] = useState(false);
   const [createOpen, setCreateOpen] = useState(false);
   const [editorScale, setEditorScale] = useState(2);
+  const [saving, setSaving] = useState(false);
   const [form] = Form.useForm();
 
   useEffect(() => {
-    loadTemplates();
+    void loadTemplates();
   }, [loadTemplates]);
 
-  const selectedElement = editingSchema?.elements.find((e) => e.id === selectedElementId) || null;
+  const selectedElement =
+    editingSchema?.elements.find((element) => element.id === selectedElementId) || null;
+
+  const summary = useMemo(() => {
+    const total = templates.length;
+    const builtins = templates.filter((template) => template.is_builtin).length;
+    const custom = total - builtins;
+    return { total, builtins, custom };
+  }, [templates]);
 
   const handleCreate = async (values: {
     name: string;
@@ -38,7 +77,7 @@ export default function TemplateEditorPage() {
     template_json_text: string;
   }) => {
     try {
-      const req: CreateBadgeTemplateRequest = {
+      const request: CreateBadgeTemplateRequest = {
         name: values.name,
         description: values.description,
         paper_size: values.paper_size,
@@ -46,23 +85,25 @@ export default function TemplateEditorPage() {
         height_mm: values.height_mm,
         template_json: values.template_json_text,
       };
-      const template = await createTemplate(req);
+      const template = await createTemplate(request);
       message.success('模板已创建');
       setCreateOpen(false);
       form.resetFields();
-      // Open the new template in editor
       selectTemplate(template);
-    } catch (e) {
-      message.error(String(e));
+    } catch (error) {
+      message.error(String(error));
     }
   };
 
   const handleDuplicate = async (templateId: number) => {
-    const template = templates.find((t) => t.id === templateId);
-    if (!template) return;
+    const template = templates.find((item) => item.id === templateId);
+    if (!template) {
+      return;
+    }
+
     try {
       await createTemplate({
-        name: `${template.name} (副本)`,
+        name: `${template.name} 副本`,
         description: template.description,
         paper_size: template.paper_size,
         width_mm: template.width_mm,
@@ -70,45 +111,54 @@ export default function TemplateEditorPage() {
         template_json: template.template_json,
       });
       message.success('模板已复制');
-    } catch (e) {
-      message.error(String(e));
+      void loadTemplates();
+    } catch (error) {
+      message.error(String(error));
     }
   };
 
-  const handleDelete = async (id: number) => {
+  const handleDelete = (templateId: number) => {
     Modal.confirm({
-      title: '确认删除',
-      content: '确定要删除此模板吗？',
+      title: '确认删除模板？',
+      content: '删除后不可恢复，请确认是否继续。',
+      okText: '删除',
+      okButtonProps: { danger: true },
+      cancelText: '取消',
       onOk: async () => {
         try {
-          await deleteTemplate(id);
+          await deleteTemplate(templateId);
           message.success('模板已删除');
-        } catch (e) {
-          message.error(String(e));
+        } catch (error) {
+          message.error(String(error));
         }
       },
     });
   };
 
   const handleSave = async () => {
+    setSaving(true);
     try {
       await saveSchemaToTemplate();
       message.success('模板已保存');
-    } catch (e) {
-      message.error(String(e));
+    } catch (error) {
+      message.error(String(error));
+    } finally {
+      setSaving(false);
     }
   };
 
   const handlePreview = async () => {
-    if (!editingSchema) return;
+    if (!editingSchema) {
+      return;
+    }
+
     setPreviewLoading(true);
     try {
-      const jsonStr = JSON.stringify(editingSchema);
-      const html = await badgeApi.renderPreview(jsonStr);
+      const html = await badgeApi.renderPreview(JSON.stringify(editingSchema));
       setPreviewHtml(html);
       setPreviewOpen(true);
-    } catch (e) {
-      message.error('预览生成失败: ' + String(e));
+    } catch (error) {
+      message.error('预览生成失败：' + String(error));
     } finally {
       setPreviewLoading(false);
     }
@@ -120,26 +170,24 @@ export default function TemplateEditorPage() {
       const html = await badgeApi.renderPreview(templateJson);
       setPreviewHtml(html);
       setPreviewOpen(true);
-    } catch (e) {
-      message.error('预览生成失败: ' + String(e));
+    } catch (error) {
+      message.error('预览生成失败：' + String(error));
     } finally {
       setPreviewLoading(false);
     }
   };
 
   const handleUpdateSchema = (updates: Record<string, unknown>) => {
-    if (!editingSchema) return;
+    if (!editingSchema) {
+      return;
+    }
+
     setEditingSchema({
       ...editingSchema,
       canvas: { ...editingSchema.canvas, ...updates },
     });
   };
 
-  const handleExitEditor = () => {
-    selectTemplate(null);
-  };
-
-  // Editor mode
   if (editingSchema && currentTemplate) {
     const editorSchema = {
       ...editingSchema.canvas,
@@ -147,32 +195,50 @@ export default function TemplateEditorPage() {
     };
 
     return (
-      <div>
-        <div style={{ marginBottom: 8, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <Space>
-            <Button onClick={handleExitEditor}>返回列表</Button>
-            <Text strong style={{ fontSize: 16 }}>{currentTemplate.name}</Text>
-            {currentTemplate.is_builtin && <Tag color="blue">内置</Tag>}
+      <div className="page-frame">
+        <Card className="page-card">
+          <Space
+            style={{ width: '100%', justifyContent: 'space-between', gap: 16, flexWrap: 'wrap' }}
+            align="start"
+          >
+            <div>
+              <Space wrap>
+                <Button onClick={() => selectTemplate(null)}>返回列表</Button>
+                <Title level={4} style={{ margin: 0 }}>
+                  {currentTemplate.name}
+                </Title>
+                {currentTemplate.is_builtin ? <Tag color="blue">内置模板</Tag> : null}
+              </Space>
+              <Paragraph type="secondary" style={{ margin: '8px 0 0' }}>
+                画布编辑尽量保持简洁，移动端时属性面板会自动切换到下方。
+              </Paragraph>
+            </div>
+            <Space wrap>
+              <Tag>{currentTemplate.paper_size === 'A4' ? 'A4' : `${currentTemplate.width_mm} × ${currentTemplate.height_mm} mm`}</Tag>
+              <Tag>{editingSchema.elements.length} 个元素</Tag>
+            </Space>
           </Space>
-        </div>
+        </Card>
 
-        <EditorToolbar
-          scale={editorScale}
-          onScaleChange={setEditorScale}
-          onAddElement={addElement}
-          onDeleteElement={() => {
-            if (selectedElementId) {
-              removeElement(selectedElementId);
-            }
-          }}
-          onSave={handleSave}
-          hasSelection={!!selectedElementId}
-          onPreview={handlePreview}
-          previewLoading={previewLoading}
-        />
+        <Card className="page-card">
+          <EditorToolbar
+            scale={editorScale}
+            onScaleChange={setEditorScale}
+            onAddElement={addElement}
+            onDeleteElement={() => {
+              if (selectedElementId) {
+                removeElement(selectedElementId);
+              }
+            }}
+            onSave={handleSave}
+            hasSelection={!!selectedElementId}
+            onPreview={handlePreview}
+            previewLoading={previewLoading || saving}
+          />
+        </Card>
 
-        <div style={{ display: 'flex', gap: 16, marginTop: 8 }}>
-          <div style={{ flex: 1 }}>
+        <div className="template-workbench">
+          <Card className="page-card template-workbench__canvas">
             <EditorCanvas
               schema={editorSchema}
               selectedElementId={selectedElementId}
@@ -180,118 +246,206 @@ export default function TemplateEditorPage() {
               onUpdateElement={updateElement}
               scale={editorScale}
             />
-          </div>
-          <div style={{ width: 240, border: '1px solid #d9d9d9', borderRadius: 4, overflowY: 'auto', maxHeight: 500 }}>
+          </Card>
+
+          <Card className="page-card template-workbench__panel">
             <PropertyPanel
               schema={editorSchema}
               selectedElement={selectedElement}
               onUpdateElement={updateElement}
               onUpdateSchema={handleUpdateSchema}
             />
-          </div>
+          </Card>
         </div>
 
-        <Modal title="效果预览" open={previewOpen} onCancel={() => setPreviewOpen(false)} width={600} footer={null} loading={previewLoading}>
-          {previewHtml && (
+        <Modal
+          title="预览效果"
+          open={previewOpen}
+          onCancel={() => setPreviewOpen(false)}
+          width={640}
+          footer={null}
+          loading={previewLoading}
+        >
+          {previewHtml ? (
             <div style={{ display: 'flex', justifyContent: 'center' }}>
               <iframe
                 srcDoc={previewHtml}
-                style={{ width: '100%', height: 500, border: '1px solid #d9d9d9', borderRadius: 4 }}
+                style={{
+                  width: '100%',
+                  height: 520,
+                  border: '1px solid #e5e7eb',
+                  borderRadius: 12,
+                  background: '#ffffff',
+                }}
                 sandbox=""
                 title="Badge Preview"
               />
             </div>
-          )}
+          ) : null}
         </Modal>
       </div>
     );
   }
 
-  // List mode
   return (
-    <div>
-      <div style={{ marginBottom: 24, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-        <h2 style={{ margin: 0 }}>胸牌模板</h2>
-        <Button type="primary" icon={<PlusOutlined />} onClick={() => { form.resetFields(); setCreateOpen(true); }}>
-          新建模板
-        </Button>
-      </div>
+    <div className="page-frame">
+      <Row gutter={[16, 16]}>
+        <Col xs={24} sm={8}>
+          <Card className="page-card metric-card">
+            <Statistic title="模板总数" value={summary.total} />
+          </Card>
+        </Col>
+        <Col xs={24} sm={8}>
+          <Card className="page-card metric-card">
+            <Statistic title="内置模板" value={summary.builtins} />
+          </Card>
+        </Col>
+        <Col xs={24} sm={8}>
+          <Card className="page-card metric-card">
+            <Statistic title="自定义模板" value={summary.custom} />
+          </Card>
+        </Col>
+      </Row>
+
+      <Card className="page-card">
+        <Space
+          style={{ width: '100%', justifyContent: 'space-between', gap: 16, flexWrap: 'wrap' }}
+          align="start"
+        >
+          <div>
+            <Title level={4} style={{ margin: 0 }}>
+              胸牌模板
+            </Title>
+            <Paragraph type="secondary" style={{ margin: '8px 0 0' }}>
+              保持模板数量精简，优先沉淀少量稳定模板，避免现场切换时出错。
+            </Paragraph>
+          </div>
+          <Button
+            type="primary"
+            icon={<PlusOutlined />}
+            onClick={() => {
+              form.resetFields();
+              setCreateOpen(true);
+            }}
+          >
+            新建模板
+          </Button>
+        </Space>
+      </Card>
 
       <Row gutter={[16, 16]}>
         {templates.map((template) => (
-          <Col key={template.id} xs={24} sm={12} md={8} lg={6}>
+          <Col key={template.id} xs={24} sm={12} xl={8}>
             <Card
+              className="page-card interactive-row"
               hoverable
               actions={[
                 <EditOutlined key="edit" onClick={() => selectTemplate(template)} />,
-                <EyeOutlined key="preview" onClick={() => handleListPreview(template.template_json)} />,
-                <CopyOutlined key="duplicate" onClick={() => handleDuplicate(template.id)} />,
-                <DeleteOutlined key="delete" onClick={() => handleDelete(template.id)} style={{ color: template.is_builtin ? '#ccc' : undefined }} />,
+                <EyeOutlined key="preview" onClick={() => void handleListPreview(template.template_json)} />,
+                <CopyOutlined key="duplicate" onClick={() => void handleDuplicate(template.id)} />,
+                <DeleteOutlined
+                  key="delete"
+                  onClick={() => handleDelete(template.id)}
+                  style={{ color: template.is_builtin ? '#cbd5e1' : undefined }}
+                />,
               ]}
             >
               <Card.Meta
-                title={<Space>{template.name}{template.is_builtin && <Tag color="blue">内置</Tag>}</Space>}
+                title={
+                  <Space wrap>
+                    <span>{template.name}</span>
+                    {template.is_builtin ? <Tag color="blue">内置</Tag> : null}
+                  </Space>
+                }
                 description={
-                  <div>
-                    <div>{template.description}</div>
-                    <div style={{ marginTop: 8, color: '#999' }}>
-                      {template.paper_size === 'A4' ? 'A4 排版' : `${template.width_mm}x${template.height_mm}mm`}
+                  <Space direction="vertical" size={10} style={{ width: '100%' }}>
+                    <Text type="secondary">
+                      {template.description || '暂无模板说明'}
+                    </Text>
+                    <div className="subtle-panel" style={{ padding: 12 }}>
+                      <Text type="secondary">
+                        {template.paper_size === 'A4'
+                          ? 'A4 排版'
+                          : `${template.width_mm} × ${template.height_mm} mm`}
+                      </Text>
                     </div>
-                  </div>
+                  </Space>
                 }
               />
-              <div style={{
-                marginTop: 16, border: '1px dashed #d9d9d9', borderRadius: 8,
-                height: template.paper_size === 'A4' ? 120 : 140,
-                display: 'flex', alignItems: 'center', justifyContent: 'center',
-                background: '#fafafa', color: '#999', fontSize: 12,
-              }}>
-                {template.paper_size === 'A4' ? 'A4 排版预览' : `${template.width_mm}x${template.height_mm}mm`}
-              </div>
             </Card>
           </Col>
         ))}
       </Row>
 
-      <Modal title="效果预览" open={previewOpen} onCancel={() => setPreviewOpen(false)} width={600} footer={null} loading={previewLoading}>
-        {previewHtml && (
+      <Modal
+        title="预览效果"
+        open={previewOpen}
+        onCancel={() => setPreviewOpen(false)}
+        width={640}
+        footer={null}
+        loading={previewLoading}
+      >
+        {previewHtml ? (
           <div style={{ display: 'flex', justifyContent: 'center' }}>
             <iframe
               srcDoc={previewHtml}
-              style={{ width: '100%', height: 500, border: '1px solid #d9d9d9', borderRadius: 4 }}
+              style={{
+                width: '100%',
+                height: 520,
+                border: '1px solid #e5e7eb',
+                borderRadius: 12,
+                background: '#ffffff',
+              }}
               sandbox=""
               title="Badge Preview"
             />
           </div>
-        )}
+        ) : null}
       </Modal>
 
-      <Modal title="新建模板" open={createOpen} onCancel={() => setCreateOpen(false)} onOk={() => form.submit()} width={700}>
+      <Modal
+        title="新建模板"
+        open={createOpen}
+        onCancel={() => setCreateOpen(false)}
+        onOk={() => form.submit()}
+        width={760}
+        okText="创建模板"
+      >
         <Form form={form} layout="vertical" onFinish={handleCreate}>
           <Form.Item name="name" label="模板名称" rules={[{ required: true }]}>
-            <Input placeholder="例如：自定义模板1" />
+            <Input placeholder="例如：标准嘉宾胸牌" />
           </Form.Item>
-          <Form.Item name="description" label="描述">
-            <Input placeholder="模板说明" />
+          <Form.Item name="description" label="说明">
+            <Input placeholder="简要描述模板用途" />
           </Form.Item>
           <Row gutter={16}>
-            <Col span={8}>
+            <Col xs={24} md={8}>
               <Form.Item name="paper_size" label="纸张类型" initialValue="CR80">
-                <Select options={[{ value: 'CR80', label: 'CR80 (54x86mm)' }, { value: 'A4', label: 'A4' }]} />
+                <Select
+                  options={[
+                    { value: 'CR80', label: 'CR80 (54 × 86 mm)' },
+                    { value: 'A4', label: 'A4' },
+                  ]}
+                />
               </Form.Item>
             </Col>
-            <Col span={8}>
-              <Form.Item name="width_mm" label="宽度(mm)" initialValue={54}>
+            <Col xs={12} md={8}>
+              <Form.Item name="width_mm" label="宽度 (mm)" initialValue={54}>
                 <Input type="number" />
               </Form.Item>
             </Col>
-            <Col span={8}>
-              <Form.Item name="height_mm" label="高度(mm)" initialValue={86}>
+            <Col xs={12} md={8}>
+              <Form.Item name="height_mm" label="高度 (mm)" initialValue={86}>
                 <Input type="number" />
               </Form.Item>
             </Col>
           </Row>
-          <Form.Item name="template_json_text" label="模板 JSON" rules={[{ required: true }]} initialValue='{"version":1,"canvas":{"width_mm":54,"height_mm":86,"background_color":"#FFFFFF","border_radius_mm":3},"elements":[]}'>
+          <Form.Item
+            name="template_json_text"
+            label="模板 JSON"
+            rules={[{ required: true }]}
+            initialValue='{"version":1,"canvas":{"width_mm":54,"height_mm":86,"background_color":"#FFFFFF","border_radius_mm":3},"elements":[]}'
+          >
             <Input.TextArea rows={10} placeholder="输入模板 JSON 定义" />
           </Form.Item>
         </Form>

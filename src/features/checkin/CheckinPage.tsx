@@ -1,14 +1,42 @@
-import { useState, useRef, useEffect, useCallback } from 'react';
-import { Input, Card, Button, Space, Tag, Statistic, Row, Col, message, Modal, Form, Typography } from 'antd';
+import { useCallback, useEffect, useRef, useState } from 'react';
+import {
+  Button,
+  Card,
+  Col,
+  Form,
+  Input,
+  Modal,
+  Row,
+  Space,
+  Spin,
+  Statistic,
+  Tag,
+  Typography,
+  message,
+} from 'antd';
 import type { InputRef } from 'antd';
-import { CheckCircleOutlined, SearchOutlined, PlusOutlined, PrinterOutlined } from '@ant-design/icons';
-import { useCheckinStore } from './checkinStore';
+import {
+  CheckCircleOutlined,
+  PlusOutlined,
+  PrinterOutlined,
+  SearchOutlined,
+} from '@ant-design/icons';
 import { useMeetingStore } from '@/features/meeting';
-import { attendeeApi, checkinApi, badgeApi, printApi } from '@/shared/api';
-import { captureHtmlToPng } from '@/shared/utils/badgeCapture';
+import { attendeeApi, badgeApi, checkinApi, printApi } from '@/shared/api';
 import type { Attendee } from '@/shared/types/attendee';
+import { captureHtmlToPng } from '@/shared/utils/badgeCapture';
+import { useCheckinStore } from './checkinStore';
 
-const { Text } = Typography;
+const { Text, Title, Paragraph } = Typography;
+
+function toOptionalString(value: unknown) {
+  if (typeof value !== 'string') {
+    return undefined;
+  }
+
+  const trimmed = value.trim();
+  return trimmed || undefined;
+}
 
 export default function CheckinPage() {
   const { currentMeeting } = useMeetingStore();
@@ -28,47 +56,67 @@ export default function CheckinPage() {
   } = useCheckinStore();
   const [query, setQuery] = useState('');
   const [showRegister, setShowRegister] = useState(false);
-  const [registerForm] = Form.useForm();
-  const [checkinSuccess, setCheckinSuccess] = useState(false);
   const [printing, setPrinting] = useState(false);
+  const [checkinSuccess, setCheckinSuccess] = useState(false);
+  const [registerForm] = Form.useForm();
   const inputRef = useRef<InputRef>(null);
 
   useEffect(() => {
-    if (currentMeeting) {
-      loadStats(currentMeeting.id);
-      loadRecentRecords(currentMeeting.id);
+    if (!currentMeeting) {
+      return;
     }
+
+    void loadStats(currentMeeting.id);
+    void loadRecentRecords(currentMeeting.id);
   }, [currentMeeting, loadRecentRecords, loadStats]);
 
   useEffect(() => {
     inputRef.current?.focus();
   }, []);
 
+  const focusSearch = useCallback(() => {
+    inputRef.current?.focus();
+  }, []);
+
+  const resetSearchFlow = useCallback(() => {
+    setQuery('');
+    clearSearch();
+    focusSearch();
+  }, [clearSearch, focusSearch]);
+
+  const refreshSidebarData = useCallback(
+    async (meetingId: number) => {
+      await Promise.all([loadStats(meetingId), loadRecentRecords(meetingId)]);
+    },
+    [loadRecentRecords, loadStats]
+  );
+
   const handleSearch = useCallback(
     (value: string) => {
       setQuery(value);
       if (currentMeeting && value.trim()) {
-        search(currentMeeting.id, value);
-      } else {
-        clearSearch();
+        void search(currentMeeting.id, value);
+        return;
       }
+
+      clearSearch();
     },
-    [currentMeeting, search, clearSearch]
+    [clearSearch, currentMeeting, search]
   );
 
   const playBeep = () => {
     try {
-      const ctx = new AudioContext();
-      const osc = ctx.createOscillator();
-      const gain = ctx.createGain();
-      osc.connect(gain);
-      gain.connect(ctx.destination);
-      osc.frequency.value = 1000;
+      const context = new AudioContext();
+      const oscillator = context.createOscillator();
+      const gain = context.createGain();
+      oscillator.connect(gain);
+      gain.connect(context.destination);
+      oscillator.frequency.value = 1000;
       gain.gain.value = 0.3;
-      osc.start();
-      osc.stop(ctx.currentTime + 0.15);
+      oscillator.start();
+      oscillator.stop(context.currentTime + 0.15);
     } catch {
-      // ignore audio failures
+      // Ignore audio failures on unsupported devices.
     }
   };
 
@@ -77,15 +125,24 @@ export default function CheckinPage() {
       if (!currentMeeting?.badge_template_id) {
         throw new Error('请先在会议设置中选择胸牌模板');
       }
+
       if (!currentMeeting.printer_name) {
         throw new Error('请先在打印设置中选择打印机');
       }
 
       setPrinting(true);
       try {
-        const html = await badgeApi.renderHtml(currentMeeting.badge_template_id, attendeeId, currentMeeting.id);
+        const html = await badgeApi.renderHtml(
+          currentMeeting.badge_template_id,
+          attendeeId,
+          currentMeeting.id
+        );
         const pngBase64 = await captureHtmlToPng(html);
-        await printApi.printBadge(currentMeeting.printer_name, pngBase64, currentMeeting.paper_size || 'CR80');
+        await printApi.printBadge(
+          currentMeeting.printer_name,
+          pngBase64,
+          currentMeeting.paper_size || 'CR80'
+        );
         await checkinApi.markBadgePrinted(attendeeId, currentMeeting.id, new Date().toISOString());
         message.success('胸牌打印成功');
         await loadStats(currentMeeting.id);
@@ -105,116 +162,149 @@ export default function CheckinPage() {
       setCheckinSuccess(true);
       message.success(successMessage);
       playBeep();
-      setTimeout(() => setCheckinSuccess(false), 1500);
+      window.setTimeout(() => setCheckinSuccess(false), 1500);
 
-      await Promise.all([
-        loadStats(currentMeeting.id),
-        loadRecentRecords(currentMeeting.id),
-      ]);
-
-      setQuery('');
-      clearSearch();
-      inputRef.current?.focus();
+      await refreshSidebarData(currentMeeting.id);
+      resetSearchFlow();
 
       if (!currentMeeting.auto_print) {
-        message.info('自动打印未开启（auto_print=' + currentMeeting.auto_print + '）');
         return;
       }
 
       if (!currentMeeting.badge_template_id) {
-        message.warning('自动打印未执行：请先选择胸牌模板');
+        message.warning('自动打印未执行：请先配置胸牌模板');
         return;
       }
 
       if (!currentMeeting.printer_name) {
-        message.warning('自动打印未执行：请先选择打印机');
+        message.warning('自动打印未执行：请先配置打印机');
         return;
       }
 
       try {
         await handlePrintBadge(attendeeId);
-      } catch (printErr) {
-        message.warning('自动打印失败: ' + String(printErr));
+      } catch (error) {
+        message.warning('自动打印失败：' + String(error));
       }
     },
-    [clearSearch, currentMeeting, handlePrintBadge, loadRecentRecords, loadStats]
+    [currentMeeting, handlePrintBadge, refreshSidebarData, resetSearchFlow]
   );
 
   const handleCheckin = async (attendee: Attendee) => {
-    if (!currentMeeting) return;
+    if (!currentMeeting) {
+      return;
+    }
 
     try {
       await checkin(attendee.id, currentMeeting.id, 'search');
-      await handlePostCheckin(attendee.id, `${attendee.name} 签到成功！`);
-    } catch (e) {
-      message.error(String(e));
+      await handlePostCheckin(attendee.id, `${attendee.name} 已签到`);
+    } catch (error) {
+      message.error(String(error));
     }
   };
 
   const handleRegisterAndCheckin = async (values: Record<string, unknown>) => {
-    if (!currentMeeting) return;
+    if (!currentMeeting) {
+      return;
+    }
 
     try {
       const attendee = await attendeeApi.addOnsite({
         meeting_id: currentMeeting.id,
-        name: String(values.name ?? ''),
-        phone: typeof values.phone === 'string' ? values.phone : undefined,
-        id_card: typeof values.id_card === 'string' ? values.id_card : undefined,
-        department: typeof values.department === 'string' ? values.department : undefined,
-        position: typeof values.position === 'string' ? values.position : undefined,
+        name: String(values.name ?? '').trim(),
+        phone: toOptionalString(values.phone),
+        id_card: toOptionalString(values.id_card),
+        department: toOptionalString(values.department),
+        position: toOptionalString(values.position),
       });
       await checkin(attendee.id, currentMeeting.id, 'manual');
       setShowRegister(false);
       registerForm.resetFields();
-      await handlePostCheckin(attendee.id, `${values.name ?? '参会者'} 登记并签到成功！`);
-    } catch (e) {
-      message.error(String(e));
+      await handlePostCheckin(attendee.id, `${attendee.name} 已完成现场登记并签到`);
+    } catch (error) {
+      message.error(String(error));
     }
   };
 
   if (!currentMeeting) {
     return (
-      <div style={{ textAlign: 'center', marginTop: 100 }}>
-        <Text type="secondary" style={{ fontSize: 18 }}>
-          请先选择或创建一个会议
-        </Text>
-      </div>
+      <Card className="page-card">
+        <div style={{ textAlign: 'center', padding: '80px 16px' }}>
+          <Title level={4}>请先选择会议</Title>
+          <Paragraph type="secondary">
+            签到台围绕当前会议工作。先在左上角选择一个会议，再开始检索、签到和打印胸牌。
+          </Paragraph>
+        </div>
+      </Card>
     );
   }
 
   return (
-    <div>
-      {checkinSuccess && (
-        <div
-          style={{
-            position: 'fixed',
-            top: 0,
-            left: 0,
-            right: 0,
-            bottom: 0,
-            background: 'rgba(82, 196, 26, 0.2)',
-            zIndex: 9999,
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            pointerEvents: 'none',
-          }}
-        >
-          <CheckCircleOutlined style={{ fontSize: 120, color: '#52c41a' }} />
+    <div className="page-frame">
+      {checkinSuccess ? (
+        <div className="floating-feedback">
+          <CheckCircleOutlined style={{ fontSize: 132, color: '#15803d' }} />
         </div>
-      )}
+      ) : null}
 
-      <Row gutter={24}>
-        <Col span={16}>
-          <Card>
-            <div style={{ marginBottom: 16 }}>
+      <Row gutter={[16, 16]}>
+        <Col xs={24} sm={12} lg={6}>
+          <Card className="page-card metric-card">
+            <Statistic title="总参会人" value={stats?.total_attendees || 0} />
+          </Card>
+        </Col>
+        <Col xs={24} sm={12} lg={6}>
+          <Card className="page-card metric-card">
+            <Statistic title="已签到" value={stats?.checked_in || 0} valueStyle={{ color: '#15803d' }} />
+          </Card>
+        </Col>
+        <Col xs={24} sm={12} lg={6}>
+          <Card className="page-card metric-card">
+            <Statistic title="未签到" value={stats?.not_checked_in || 0} />
+          </Card>
+        </Col>
+        <Col xs={24} sm={12} lg={6}>
+          <Card className="page-card metric-card">
+            <Statistic
+              title="待打印胸牌"
+              value={stats?.badges_not_printed || 0}
+              valueStyle={{ color: '#d97706' }}
+            />
+          </Card>
+        </Col>
+      </Row>
+
+      <Row gutter={[16, 16]}>
+        <Col xs={24} xl={15}>
+          <Card className="page-card">
+            <Space direction="vertical" size={18} style={{ width: '100%' }}>
+              <Space
+                style={{ width: '100%', justifyContent: 'space-between', flexWrap: 'wrap', gap: 12 }}
+                align="start"
+              >
+                <div>
+                  <Title level={4} style={{ margin: 0 }}>
+                    快速签到
+                  </Title>
+                  <Paragraph type="secondary" style={{ margin: '8px 0 0' }}>
+                    支持姓名、手机号、身份证号或签到码检索。录入后按回车，如果结果唯一会直接进入确认态。
+                  </Paragraph>
+                </div>
+                <Space wrap>
+                  {currentMeeting.auto_print ? <Tag color="success">自动打印已开启</Tag> : <Tag>自动打印未开启</Tag>}
+                  <Button icon={<PlusOutlined />} onClick={() => setShowRegister(true)}>
+                    现场补录
+                  </Button>
+                </Space>
+              </Space>
+
               <Input
                 ref={inputRef}
                 size="large"
-                placeholder="输入姓名、身份证号、手机号或签到码搜索..."
+                placeholder="输入姓名、手机号、身份证号或签到码"
                 prefix={<SearchOutlined />}
                 value={query}
-                onChange={(e) => handleSearch(e.target.value)}
+                onChange={(event) => handleSearch(event.target.value)}
                 onPressEnter={() => {
                   if (searchResults.length === 1) {
                     selectAttendee(searchResults[0]);
@@ -223,160 +313,171 @@ export default function CheckinPage() {
                 allowClear
                 autoFocus
               />
-            </div>
 
-            {searchResults.length > 0 && !selectedAttendee && (
-              <div style={{ border: '1px solid #f0f0f0', borderRadius: 8, maxHeight: 300, overflow: 'auto' }}>
-                {searchResults.map((att) => (
-                  <div
-                    key={att.id}
-                    style={{
-                      padding: '12px 16px',
-                      cursor: 'pointer',
-                      borderBottom: '1px solid #f0f0f0',
-                      display: 'flex',
-                      justifyContent: 'space-between',
-                      alignItems: 'center',
-                    }}
-                    onClick={() => selectAttendee(att)}
-                    onMouseEnter={(e) => {
-                      e.currentTarget.style.background = '#f5f5f5';
-                    }}
-                    onMouseLeave={(e) => {
-                      e.currentTarget.style.background = '';
-                    }}
+              {searchLoading ? (
+                <div className="subtle-panel" style={{ padding: 28, textAlign: 'center' }}>
+                  <Spin />
+                  <div style={{ marginTop: 12 }}>
+                    <Text type="secondary">正在检索匹配的参会人…</Text>
+                  </div>
+                </div>
+              ) : null}
+
+              {selectedAttendee ? (
+                <Card className="page-card focus-card">
+                  <Space
+                    style={{ width: '100%', justifyContent: 'space-between', gap: 16, flexWrap: 'wrap' }}
+                    align="start"
                   >
                     <div>
-                      <Text strong style={{ fontSize: 16 }}>
-                        {att.name}
-                      </Text>
-                      {att.department && (
-                        <Text type="secondary" style={{ marginLeft: 12 }}>
-                          {att.department}
-                        </Text>
-                      )}
+                      <Title level={3} style={{ margin: 0 }}>
+                        {selectedAttendee.name}
+                      </Title>
+                      <Space wrap size={[8, 8]} style={{ marginTop: 10 }}>
+                        {selectedAttendee.department ? <Tag>{selectedAttendee.department}</Tag> : null}
+                        {selectedAttendee.position ? <Tag>{selectedAttendee.position}</Tag> : null}
+                        {selectedAttendee.phone ? <Tag>{selectedAttendee.phone}</Tag> : null}
+                        {selectedAttendee.checked_in ? <Tag color="green">已签到</Tag> : <Tag>未签到</Tag>}
+                      </Space>
                     </div>
-                    <div>{att.checked_in ? <Tag color="green">已签到</Tag> : <Tag>未签到</Tag>}</div>
-                  </div>
-                ))}
-              </div>
-            )}
 
-            {selectedAttendee && (
-              <Card style={{ marginTop: 16, borderColor: '#1664FF' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <div>
-                    <Text strong style={{ fontSize: 20 }}>
-                      {selectedAttendee.name}
-                    </Text>
-                    <div style={{ marginTop: 8, color: '#666' }}>
-                      {selectedAttendee.department && (
-                        <span style={{ marginRight: 16 }}>部门: {selectedAttendee.department}</span>
-                      )}
-                      {selectedAttendee.position && (
-                        <span style={{ marginRight: 16 }}>职位: {selectedAttendee.position}</span>
-                      )}
-                      {selectedAttendee.phone && <span>电话: {selectedAttendee.phone}</span>}
-                    </div>
-                  </div>
-                  <Space>
-                    <Button
-                      onClick={() => {
-                        clearSearch();
-                        setQuery('');
-                        inputRef.current?.focus();
-                      }}
-                    >
-                      取消
-                    </Button>
-                    <Button
-                      type="primary"
-                      icon={<CheckCircleOutlined />}
-                      loading={checkinLoading}
-                      onClick={() => handleCheckin(selectedAttendee)}
-                      size="large"
-                    >
-                      确认签到
-                    </Button>
-                    <Button
-                      icon={<PrinterOutlined />}
-                      loading={printing}
-                      onClick={async () => {
-                        try {
-                          await handlePrintBadge(selectedAttendee.id);
-                        } catch (e) {
-                          message.error(String(e));
+                    <Space wrap>
+                      <Button onClick={resetSearchFlow}>取消</Button>
+                      <Button
+                        type="primary"
+                        size="large"
+                        icon={<CheckCircleOutlined />}
+                        loading={checkinLoading}
+                        onClick={() => void handleCheckin(selectedAttendee)}
+                      >
+                        确认签到
+                      </Button>
+                      <Button
+                        icon={<PrinterOutlined />}
+                        loading={printing}
+                        onClick={() =>
+                          void handlePrintBadge(selectedAttendee.id).catch((error) =>
+                            message.error(String(error))
+                          )
                         }
-                      }}
-                    >
-                      打印胸牌
-                    </Button>
+                      >
+                        打印胸牌
+                      </Button>
+                    </Space>
                   </Space>
-                </div>
-              </Card>
-            )}
+                </Card>
+              ) : null}
 
-            {query && searchResults.length === 0 && !searchLoading && !selectedAttendee && (
-              <div style={{ textAlign: 'center', padding: 24, color: '#999' }}>
-                <p>未找到匹配的参会者</p>
-                <Button type="link" icon={<PlusOutlined />} onClick={() => setShowRegister(true)}>
-                  现场登记并签到
-                </Button>
-              </div>
-            )}
+              {!selectedAttendee && searchResults.length > 0 ? (
+                <Space direction="vertical" size={12} style={{ width: '100%' }}>
+                  {searchResults.map((attendee) => (
+                    <Card
+                      key={attendee.id}
+                      className="page-card interactive-row"
+                      styles={{ body: { padding: 16 } }}
+                      onClick={() => selectAttendee(attendee)}
+                    >
+                      <Space
+                        style={{ width: '100%', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap' }}
+                        align="center"
+                      >
+                        <div>
+                          <Title level={5} style={{ margin: 0 }}>
+                            {attendee.name}
+                          </Title>
+                          <Space wrap size={[8, 8]} style={{ marginTop: 8 }}>
+                            {attendee.department ? <Tag>{attendee.department}</Tag> : null}
+                            {attendee.position ? <Tag>{attendee.position}</Tag> : null}
+                            {attendee.phone ? <Tag>{attendee.phone}</Tag> : null}
+                          </Space>
+                        </div>
+                        {attendee.checked_in ? <Tag color="green">已签到</Tag> : <Tag>待签到</Tag>}
+                      </Space>
+                    </Card>
+                  ))}
+                </Space>
+              ) : null}
+
+              {!searchLoading && query && searchResults.length === 0 && !selectedAttendee ? (
+                <div className="subtle-panel" style={{ padding: 28, textAlign: 'center' }}>
+                  <Title level={5}>未找到匹配的参会人</Title>
+                  <Paragraph type="secondary" style={{ marginBottom: 12 }}>
+                    可以检查检索关键词，或直接做现场补录并完成签到。
+                  </Paragraph>
+                  <Button type="primary" icon={<PlusOutlined />} onClick={() => setShowRegister(true)}>
+                    现场补录并签到
+                  </Button>
+                </div>
+              ) : null}
+            </Space>
           </Card>
         </Col>
 
-        <Col span={8}>
-          <Card title="签到统计">
-            <Row gutter={[16, 16]}>
-              <Col span={12}>
-                <Statistic title="总参会人数" value={stats?.total_attendees || 0} />
-              </Col>
-              <Col span={12}>
-                <Statistic title="已签到" value={stats?.checked_in || 0} styles={{ content: { color: '#52c41a' } }} />
-              </Col>
-              <Col span={12}>
-                <Statistic title="未签到" value={stats?.not_checked_in || 0} />
-              </Col>
-              <Col span={12}>
-                <Statistic
-                  title="未打印胸牌"
-                  value={stats?.badges_not_printed || 0}
-                  styles={{ content: { color: '#faad14' } }}
-                />
-              </Col>
-            </Row>
-          </Card>
-
-          <Card title="最近签到" style={{ marginTop: 16 }}>
-            {recentRecords.slice(0, 5).map((record) => (
-              <div key={record.id} style={{ padding: '8px 0', borderBottom: '1px solid #f0f0f0' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                  <Text>{record.attendee_name}</Text>
-                  <Text type="secondary" style={{ fontSize: 12 }}>
-                    {new Date(record.checkin_time).toLocaleTimeString()}
-                  </Text>
+        <Col xs={24} xl={9}>
+          <Space direction="vertical" size={16} style={{ width: '100%' }}>
+            <Card className="page-card">
+              <Title level={5}>当前会议配置</Title>
+              <Space direction="vertical" size={10} style={{ width: '100%' }}>
+                <div>
+                  <Text type="secondary">胸牌模板</Text>
+                  <div>{currentMeeting.badge_template_id ? '已配置' : '未配置'}</div>
                 </div>
-                {record.attendee_department && (
-                  <Text type="secondary" style={{ fontSize: 12 }}>
-                    {record.attendee_department}
-                  </Text>
+                <div>
+                  <Text type="secondary">打印机</Text>
+                  <div>{currentMeeting.printer_name || '未配置打印机'}</div>
+                </div>
+                <div>
+                  <Text type="secondary">自动打印</Text>
+                  <div>{currentMeeting.auto_print ? '已开启' : '未开启'}</div>
+                </div>
+              </Space>
+            </Card>
+
+            <Card className="page-card">
+              <Title level={5}>最近签到</Title>
+              <Space direction="vertical" size={12} style={{ width: '100%' }}>
+                {recentRecords.length === 0 ? (
+                  <Text type="secondary">当前还没有签到记录。</Text>
+                ) : (
+                  recentRecords.slice(0, 6).map((record) => (
+                    <div key={record.id} className="subtle-panel" style={{ padding: 14 }}>
+                      <Space
+                        style={{ width: '100%', justifyContent: 'space-between', gap: 12 }}
+                        align="start"
+                      >
+                        <div>
+                          <div style={{ fontWeight: 600 }}>{record.attendee_name}</div>
+                          <Text type="secondary" style={{ fontSize: 12 }}>
+                            {record.attendee_department || '未填写部门'}
+                          </Text>
+                        </div>
+                        <Tag color={record.badge_printed ? 'green' : 'gold'}>
+                          {record.badge_printed ? '已打印' : '待打印'}
+                        </Tag>
+                      </Space>
+                      <div style={{ marginTop: 8 }}>
+                        <Text type="secondary" style={{ fontSize: 12 }}>
+                          {new Date(record.checkin_time).toLocaleTimeString()}
+                        </Text>
+                      </div>
+                    </div>
+                  ))
                 )}
-              </div>
-            ))}
-          </Card>
+              </Space>
+            </Card>
+          </Space>
         </Col>
       </Row>
 
       <Modal
-        title="现场登记"
+        title="现场补录"
         open={showRegister}
         onCancel={() => setShowRegister(false)}
         onOk={() => registerForm.submit()}
+        okText="登记并签到"
       >
         <Form form={registerForm} layout="vertical" onFinish={handleRegisterAndCheckin}>
-          <Form.Item name="name" label="姓名" rules={[{ required: true }]}>
+          <Form.Item name="name" label="姓名" rules={[{ required: true, message: '请输入姓名' }]}>
             <Input />
           </Form.Item>
           <Form.Item name="phone" label="手机号">
