@@ -57,6 +57,6 @@ jobs:
         with:
           tagName: ${{ github.ref_name }}
           releaseName: 'Imprint ${{ github.ref_name }}'
-          releaseBody: '## What\'s New\n\n${{ github.event.head_commit.message }}'
+          releaseBody: "## What's New\n\n${{ github.event.head_commit.message }}"
           releaseDraft: true
           prerelease: false
