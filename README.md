@@ -102,7 +102,7 @@ Releases are automated via GitHub Actions. To publish a new version:
    git tag v0.2.0
    git push origin v0.2.0
    ```
-3. GitHub Actions will build for Windows, macOS, and Linux, then create a draft release with all installers and an `update.json` manifest for in-app updates.
+3. GitHub Actions will build for Windows, macOS, and Linux, then create a draft release with all installers and a `latest.json` updater manifest for in-app updates.
 
 ### Signing Key
 
