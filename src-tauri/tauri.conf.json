@@ -1,6 +1,6 @@
 {
   "$schema": "../node_modules/@tauri-apps/cli/config.schema.json",
-  "productName": "会务签到",
+  "productName": "imprint",
   "version": "0.1.0",
   "identifier": "com.checkin.app",
   "build": {
@@ -12,7 +12,7 @@
   "app": {
     "windows": [
       {
-        "title": "会务签到",
+        "title": "imprint",
         "width": 1280,
         "height": 800,
         "minWidth": 1024,
@@ -23,7 +23,7 @@
       }
     ],
     "security": {
-      "csp": "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self' data:"
+      "csp": "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self' data:; connect-src 'self' https://github.com https://api.github.com https://objects.githubusercontent.com"
     }
   },
   "bundle": {
@@ -37,5 +37,12 @@
       "icons/icon.ico"
     ]
   },
-  "plugins": {}
+  "plugins": {
+    "updater": {
+      "endpoints": [
+        "https://github.com/onionch/imprint/releases/latest/download/latest.json"
+      ],
+      "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IDY0QjM3NEYwQTdGNDRCMTUKUldRVlMvU244SFN6WkpLR2NQUEhOcGpsUWJpU2w3QXlJRWRLcitoMEQvZmdGSFo2dlh1TmdUU1kK"
+    }
+  }
 }

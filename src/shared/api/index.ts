@@ -72,3 +72,15 @@ export const printApi = {
 export const importApi = {
   readHeaders: (filePath: string) => invoke<string[]>('read_excel_headers', { filePath }),
 };
+
+// Update APIs
+export interface UpdateInfo {
+  current_version: string;
+  latest_version: string;
+  body: string | null;
+}
+
+export const updateApi = {
+  checkUpdate: () => invoke<UpdateInfo | null>('check_update'),
+  installUpdate: () => invoke<void>('install_update'),
+};

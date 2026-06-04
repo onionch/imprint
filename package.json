@@ -1,7 +1,7 @@
 {
   "name": "checkin-tauri",
   "private": true,
-  "version": "0.0.0",
+  "version": "0.1.0",
   "type": "module",
   "scripts": {
     "dev": "vite",
@@ -15,6 +15,7 @@
     "@tauri-apps/cli": "^2.11.2",
     "@tauri-apps/plugin-dialog": "^2.7.1",
     "@tauri-apps/plugin-fs": "^2.5.1",
+    "@tauri-apps/plugin-updater": "^2.7.1",
     "@types/qrcode": "^1.5.6",
     "ahooks": "^3.9.7",
     "antd": "^6.4.3",

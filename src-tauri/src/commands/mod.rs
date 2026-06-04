@@ -4,6 +4,7 @@ pub mod checkin_commands;
 pub mod badge_commands;
 pub mod print_commands;
 pub mod import_commands;
+pub mod update_commands;
 
 use std::sync::MutexGuard;
 
@@ -51,6 +52,8 @@ macro_rules! command_handlers {
             crate::commands::print_commands::print_badge,
             crate::commands::print_commands::test_print,
             crate::commands::import_commands::read_excel_headers,
+            crate::commands::update_commands::check_update,
+            crate::commands::update_commands::install_update,
         ]
     };
 }

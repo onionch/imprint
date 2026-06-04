@@ -17,6 +17,7 @@ import { CheckinPage, RecordsPage } from '@/features/checkin';
 import { MeetingDashboard, useMeetingStore } from '@/features/meeting';
 import { PrinterSettingsPage } from '@/features/printing';
 import { TemplateEditorPage } from '@/features/template';
+import UpdateChecker from '@/features/update/UpdateChecker';
 
 const { Header, Sider, Content } = Layout;
 const { Title, Text } = Typography;
@@ -229,6 +230,8 @@ export default function AppShell() {
                 }
                 allowClear
               />
+
+              <UpdateChecker />
 
               <Button
                 type="primary"
