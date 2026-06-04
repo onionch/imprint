@@ -148,15 +148,6 @@ const BUILTIN_TEMPLATES: &[BuiltinTemplate] = &[
 ];
 
 pub fn run_migrations(conn: &Connection) -> Result<(), rusqlite::Error> {
-    // Migration: add auto_print column to meetings if missing
-    let has_auto_print: bool = {
-        let mut stmt = conn.prepare("PRAGMA table_info(meetings)")?;
-        let rows: Vec<String> = stmt.query_map([], |row| row.get(1))?.filter_map(|r| r.ok()).collect();
-        rows.iter().any(|c| c == "auto_print")
-    };
-    if !has_auto_print {
-        conn.execute("ALTER TABLE meetings ADD COLUMN auto_print INTEGER NOT NULL DEFAULT 1", [])?;
-    }
     let current_version: i32 = conn
         .query_row(
             "SELECT COALESCE(MAX(version), 0) FROM _migrations",
