@@ -294,6 +294,14 @@ textarea {
 }
 
 @media (max-width: 992px) {
+  .app-shell__overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 29;
+    background: rgba(0, 0, 0, 0.45);
+    transition: opacity 200ms ease;
+  }
+
   .app-shell__sider {
     position: absolute !important;
     z-index: 30;

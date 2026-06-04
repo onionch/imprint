@@ -151,6 +151,12 @@ export default function AppShell() {
 
   return (
     <Layout className="app-shell">
+      {mobile && mobileMenuOpen ? (
+        <div
+          className="app-shell__overlay"
+          onClick={() => setMobileMenuOpen(false)}
+        />
+      ) : null}
       <Sider
         className="app-shell__sider"
         width={220}

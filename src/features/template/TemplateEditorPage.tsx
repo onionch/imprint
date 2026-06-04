@@ -345,8 +345,9 @@ export default function TemplateEditorPage() {
                 <CopyOutlined key="duplicate" onClick={() => void handleDuplicate(template.id)} />,
                 <DeleteOutlined
                   key="delete"
-                  onClick={() => handleDelete(template.id)}
-                  style={{ color: template.is_builtin ? '#cbd5e1' : undefined }}
+                  onClick={template.is_builtin ? undefined : () => handleDelete(template.id)}
+                  style={{ color: template.is_builtin ? '#cbd5e1' : undefined, cursor: template.is_builtin ? 'not-allowed' : 'pointer' }}
+                  title={template.is_builtin ? '内置模板不可删除' : '删除'}
                 />,
               ]}
             >

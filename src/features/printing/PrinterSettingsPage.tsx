@@ -30,7 +30,6 @@ export default function PrinterSettingsPage() {
   const [printers, setPrinters] = useState<PrinterInfo[]>([]);
   const [loading, setLoading] = useState(false);
   const [testing, setTesting] = useState(false);
-  const [saving, setSaving] = useState(false);
   const [draft, setDraft] = useState<PrinterDraft>({ meetingId: null });
 
   const activeMeetingId = currentMeeting?.id ?? null;
@@ -68,26 +67,31 @@ export default function PrinterSettingsPage() {
 
   const selectedPrinterInfo = printers.find((printer) => printer.name === selectedPrinter);
 
+  const persistSetting = useCallback(
+    async (printerName: string, autoPrint: boolean) => {
+      if (!currentMeeting) return;
+      try {
+        await updateMeeting(currentMeeting.id, {
+          printer_name: printerName,
+          auto_print: autoPrint,
+        });
+      } catch {
+        // error shown by caller
+      }
+    },
+    [currentMeeting, updateMeeting]
+  );
+
   const handlePrinterChange = (printerName: string) => {
-    setDraft((currentDraft) => ({
-      meetingId: activeMeetingId,
-      printerName,
-      autoPrint:
-        currentDraft.meetingId === activeMeetingId
-          ? currentDraft.autoPrint ?? currentMeeting?.auto_print ?? false
-          : currentMeeting?.auto_print ?? false,
-    }));
+    const newAutoPrint = autoPrint;
+    setDraft({ meetingId: activeMeetingId, printerName, autoPrint: newAutoPrint });
+    void persistSetting(printerName, newAutoPrint);
   };
 
   const handleAutoPrintChange = (enabled: boolean) => {
-    setDraft((currentDraft) => ({
-      meetingId: activeMeetingId,
-      printerName:
-        currentDraft.meetingId === activeMeetingId
-          ? currentDraft.printerName ?? meetingPrinter
-          : meetingPrinter,
-      autoPrint: enabled,
-    }));
+    const newPrinter = selectedPrinter;
+    setDraft({ meetingId: activeMeetingId, printerName: newPrinter, autoPrint: enabled });
+    void persistSetting(newPrinter, enabled);
   };
 
   const handleTestPrint = async () => {
@@ -104,36 +108,6 @@ export default function PrinterSettingsPage() {
       message.error(String(error));
     } finally {
       setTesting(false);
-    }
-  };
-
-  const handleSave = async () => {
-    if (!currentMeeting) {
-      message.warning('\u8bf7\u5148\u9009\u62e9\u4f1a\u8bae');
-      return;
-    }
-
-    if (!selectedPrinter) {
-      message.warning('\u8bf7\u5148\u9009\u62e9\u6253\u5370\u673a');
-      return;
-    }
-
-    setSaving(true);
-    try {
-      await updateMeeting(currentMeeting.id, {
-        printer_name: selectedPrinter,
-        auto_print: autoPrint,
-      });
-      setDraft({
-        meetingId: currentMeeting.id,
-        printerName: selectedPrinter,
-        autoPrint,
-      });
-      message.success('\u6253\u5370\u8bbe\u7f6e\u5df2\u4fdd\u5b58');
-    } catch (error) {
-      message.error(String(error));
-    } finally {
-      setSaving(false);
     }
   };
 
@@ -294,14 +268,6 @@ export default function PrinterSettingsPage() {
                   disabled={!selectedPrinter}
                 >
                   {'\u6d4b\u8bd5\u6253\u5370'}
-                </Button>
-                <Button
-                  type="primary"
-                  onClick={() => void handleSave()}
-                  loading={saving}
-                  disabled={!currentMeeting}
-                >
-                  {'\u4fdd\u5b58\u8bbe\u7f6e'}
                 </Button>
               </Space>
             </Space>

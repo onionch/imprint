@@ -2,6 +2,18 @@ import { create } from 'zustand';
 import type { Meeting } from '@/shared/types/meeting';
 import { meetingApi } from '@/shared/api';
 
+const MEETING_STORAGE_KEY = 'checkin-tauri/current-meeting-id';
+
+function readStoredMeetingId(): number | null {
+  if (typeof window === 'undefined') return null;
+  const stored = window.localStorage.getItem(MEETING_STORAGE_KEY);
+  if (stored) {
+    const id = Number(stored);
+    return Number.isFinite(id) ? id : null;
+  }
+  return null;
+}
+
 interface MeetingState {
   meetings: Meeting[];
   currentMeeting: Meeting | null;
@@ -26,14 +38,23 @@ export const useMeetingStore = create<MeetingState>((set, get) => ({
       const meetings = await meetingApi.list();
       set({ meetings, loading: false });
       if (!get().currentMeeting && meetings.length > 0) {
-        set({ currentMeeting: meetings[0] });
+        const storedId = readStoredMeetingId();
+        const target = storedId ? meetings.find((m) => m.id === storedId) : null;
+        set({ currentMeeting: target || meetings[0] });
       }
     } catch (e) {
       set({ error: String(e), loading: false });
     }
   },
 
-  selectMeeting: (meeting) => set({ currentMeeting: meeting }),
+  selectMeeting: (meeting) => {
+    set({ currentMeeting: meeting });
+    if (meeting) {
+      window.localStorage.setItem(MEETING_STORAGE_KEY, String(meeting.id));
+    } else {
+      window.localStorage.removeItem(MEETING_STORAGE_KEY);
+    }
+  },
 
   createMeeting: async (req) => {
     const meeting = await meetingApi.create(req);
