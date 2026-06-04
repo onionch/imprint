@@ -37,9 +37,9 @@ pub async fn install_update(app: AppHandle) -> Result<(), String> {
                 .download_and_install(|_chunk_len, _content_length| {}, || {})
                 .await
                 .map_err(|e| e.to_string())?;
-            // restart() terminates the process — the return value is never delivered
+            // restart() terminates the process
             app.restart();
-            unreachable!()
+            Ok(())
         }
         Ok(None) => Err("没有可用的更新".to_string()),
         Err(e) => Err(e.to_string()),
