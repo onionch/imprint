@@ -148,6 +148,9 @@ const BUILTIN_TEMPLATES: &[BuiltinTemplate] = &[
 ];
 
 pub fn run_migrations(conn: &Connection) -> Result<(), rusqlite::Error> {
+    // Ensure _migrations table exists before querying it
+    conn.execute_batch("CREATE TABLE IF NOT EXISTS _migrations (version INTEGER PRIMARY KEY)")?;
+
     let current_version: i32 = conn
         .query_row(
             "SELECT COALESCE(MAX(version), 0) FROM _migrations",
