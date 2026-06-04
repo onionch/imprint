@@ -1,5 +1,5 @@
 [package]
-name = "checkin-app"
+name = "imprint"
 version = "0.1.0"
 description = "会务签到胸牌打印工具"
 authors = ["you"]
