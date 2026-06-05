@@ -10,7 +10,7 @@ interface CheckinState {
   stats: MeetingStats | null;
   searchLoading: boolean;
   checkinLoading: boolean;
-  search: (meetingId: number, query: string) => Promise<void>;
+  search: (meetingId: number, query: string) => Promise<Attendee[]>;
   selectAttendee: (attendee: Attendee | null) => void;
   checkin: (attendeeId: number, meetingId: number, method?: string) => Promise<CheckinRecord>;
   loadStats: (meetingId: number) => Promise<void>;
@@ -29,14 +29,16 @@ export const useCheckinStore = create<CheckinState>((set) => ({
   search: async (meetingId, query) => {
     if (!query.trim()) {
       set({ searchResults: [], searchLoading: false });
-      return;
+      return [];
     }
     set({ searchLoading: true });
     try {
       const results = await attendeeApi.search(meetingId, query);
       set({ searchResults: results, searchLoading: false });
+      return results;
     } catch {
       set({ searchResults: [], searchLoading: false });
+      return [];
     }
   },
 

@@ -1857,7 +1857,16 @@ button.overlay-card:hover {
   background: rgba(50, 91, 241, 0.05);
 }
 
+.scanner-result:disabled {
+  cursor: wait;
+  opacity: 0.82;
+}
+
 .scanner-result__name {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
   color: var(--on-surface);
   font-size: var(--font-size-body-lg);
   font-weight: 600;
@@ -1870,11 +1879,70 @@ button.overlay-card:hover {
   font-size: 12px;
 }
 
+.scanner-result__tag {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 8px;
+  border-radius: var(--radius-full);
+  font-size: 11px;
+  line-height: 1.4;
+  font-weight: 600;
+}
+
+.scanner-result__tag--checked-in {
+  background: rgba(217, 119, 6, 0.12);
+  color: var(--warning);
+}
+
+.scanner-result__tag--processing {
+  background: rgba(0, 63, 216, 0.12);
+  color: var(--primary);
+}
+
 .feedback-card {
-  border: 1px solid var(--primary);
-  background: var(--primary);
-  color: var(--on-primary);
+  border: 1px solid var(--outline-variant);
+  background: var(--surface-container-lowest);
+  color: var(--on-surface);
   padding: var(--spacing-gutter);
+  transition:
+    background 180ms ease,
+    border-color 180ms ease,
+    color 180ms ease,
+    box-shadow 180ms ease;
+}
+
+.feedback-card--idle {
+  border-color: var(--outline-variant);
+  background: linear-gradient(135deg, var(--surface-container-lowest) 0%, var(--surface-container-low) 100%);
+  color: var(--on-surface);
+}
+
+.feedback-card--processing {
+  border-color: rgba(0, 63, 216, 0.32);
+  background: linear-gradient(135deg, rgba(0, 63, 216, 0.96) 0%, rgba(50, 91, 241, 0.88) 100%);
+  color: var(--on-primary);
+  box-shadow: 0 16px 36px rgba(0, 63, 216, 0.2);
+}
+
+.feedback-card--success {
+  border-color: rgba(21, 128, 61, 0.32);
+  background: linear-gradient(135deg, rgba(21, 128, 61, 0.96) 0%, rgba(22, 163, 74, 0.9) 100%);
+  color: #f3fff6;
+  box-shadow: 0 16px 36px rgba(21, 128, 61, 0.18);
+}
+
+.feedback-card--warning {
+  border-color: rgba(217, 119, 6, 0.32);
+  background: linear-gradient(135deg, rgba(217, 119, 6, 0.96) 0%, rgba(245, 158, 11, 0.88) 100%);
+  color: #fff9ec;
+  box-shadow: 0 16px 36px rgba(217, 119, 6, 0.18);
+}
+
+.feedback-card--error {
+  border-color: rgba(186, 26, 26, 0.32);
+  background: linear-gradient(135deg, rgba(186, 26, 26, 0.96) 0%, rgba(220, 38, 38, 0.9) 100%);
+  color: #fff5f5;
+  box-shadow: 0 16px 36px rgba(186, 26, 26, 0.18);
 }
 
 .feedback-card__header {
@@ -1894,7 +1962,7 @@ button.overlay-card:hover {
 
 .feedback-card__token {
   margin: 4px 0 0;
-  opacity: 0.8;
+  opacity: 0.82;
   font-family: var(--font-family-mono);
   font-size: 14px;
 }
@@ -1917,8 +1985,8 @@ button.overlay-card:hover {
   height: 64px;
   align-items: center;
   justify-content: center;
-  border: 1px solid rgba(255, 255, 255, 0.2);
-  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid currentColor;
+  background: rgba(255, 255, 255, 0.12);
   font-size: 28px;
   font-weight: 600;
   object-fit: cover;
@@ -1932,22 +2000,29 @@ button.overlay-card:hover {
 
 .feedback-card__role {
   margin-top: 4px;
-  opacity: 0.8;
+  opacity: 0.84;
   font-size: var(--font-size-body-md);
   line-height: var(--line-height-body-md);
+}
+
+.feedback-card__description {
+  margin-bottom: 18px;
+  opacity: 0.9;
+  font-size: 13px;
+  line-height: 1.6;
 }
 
 .feedback-card__details {
   display: grid;
   gap: 16px;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  border-top: 1px solid rgba(255, 255, 255, 0.2);
+  border-top: 1px solid rgba(255, 255, 255, 0.18);
   padding-top: 16px;
 }
 
 .feedback-card__label {
   margin-bottom: 4px;
-  opacity: 0.6;
+  opacity: 0.72;
   font-size: 10px;
   font-weight: 700;
   letter-spacing: 0.08em;
@@ -1957,6 +2032,35 @@ button.overlay-card:hover {
 .feedback-card__value {
   font-family: var(--font-family-mono);
   font-weight: 700;
+}
+
+.feedback-card__value--pending {
+  color: inherit;
+}
+
+.feedback-card__value--printed {
+  color: #d8ffe2;
+}
+
+.feedback-card--idle .feedback-card__value--printed,
+.feedback-card--warning .feedback-card__value--printed {
+  color: var(--success);
+}
+
+.feedback-card__value--warning {
+  color: #fff6da;
+}
+
+.feedback-card--idle .feedback-card__value--warning {
+  color: var(--warning);
+}
+
+.feedback-card__value--error {
+  color: #ffe0e0;
+}
+
+.feedback-card--idle .feedback-card__value--error {
+  color: var(--error);
 }
 
 .progress-card {
