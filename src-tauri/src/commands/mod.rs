@@ -5,6 +5,7 @@ pub mod badge_commands;
 pub mod print_commands;
 pub mod import_commands;
 pub mod update_commands;
+pub mod window_commands;
 
 use std::sync::MutexGuard;
 
@@ -54,6 +55,10 @@ macro_rules! command_handlers {
             crate::commands::import_commands::read_excel_headers,
             crate::commands::update_commands::check_update,
             crate::commands::update_commands::install_update,
+            crate::commands::window_commands::window_minimize,
+            crate::commands::window_commands::window_toggle_maximize,
+            crate::commands::window_commands::window_is_maximized,
+            crate::commands::window_commands::window_close,
         ]
     };
 }

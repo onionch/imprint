@@ -6,14 +6,14 @@ function App() {
     <ConfigProvider
       theme={{
         token: {
-          colorPrimary: '#0f766e',
-          colorInfo: '#0f766e',
+          colorPrimary: '#003fd8',
+          colorInfo: '#003fd8',
           colorSuccess: '#15803d',
           colorWarning: '#d97706',
           colorError: '#dc2626',
-          borderRadius: 14,
+          borderRadius: 8,
           fontFamily:
-            '"Microsoft YaHei", "PingFang SC", "Noto Sans SC", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif',
+            '"MiSans", "Microsoft YaHei", "PingFang SC", "Noto Sans SC", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif',
         },
       }}
     >

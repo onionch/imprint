@@ -1,4 +1,5 @@
 import { invoke } from '@tauri-apps/api/core';
+import { getCurrentWindow } from '@tauri-apps/api/window';
 import type { Meeting, CreateMeetingRequest, UpdateMeetingRequest } from '@/shared/types/meeting';
 import type {
   Attendee,
@@ -11,6 +12,8 @@ import type {
 import type { CheckinRecord, MeetingStats } from '@/shared/types/checkin';
 import type { BadgeTemplate, CreateBadgeTemplateRequest, UpdateBadgeTemplateRequest } from '@/shared/types/template';
 import type { PrinterInfo } from '@/shared/types/printer';
+
+const appWindow = getCurrentWindow();
 
 // Meeting APIs
 export const meetingApi = {
@@ -83,4 +86,13 @@ export interface UpdateInfo {
 export const updateApi = {
   checkUpdate: () => invoke<UpdateInfo | null>('check_update'),
   installUpdate: () => invoke<void>('install_update'),
+};
+
+// Window APIs
+export const windowApi = {
+  startDragging: () => appWindow.startDragging(),
+  minimize: () => invoke<void>('window_minimize'),
+  toggleMaximize: () => invoke<void>('window_toggle_maximize'),
+  isMaximized: () => invoke<boolean>('window_is_maximized'),
+  close: () => invoke<void>('window_close'),
 };

@@ -1,255 +1,502 @@
-import { useEffect, useMemo, useState } from 'react';
-import type { ReactNode } from 'react';
-import { Button, Grid, Layout, Menu, Select, Space, Tag, Typography } from 'antd';
+import { useEffect, useMemo, useRef, useState, type MouseEvent as ReactMouseEvent } from 'react';
+import { Button, Input } from 'antd';
 import {
-  CalendarOutlined,
-  CheckCircleOutlined,
-  IdcardOutlined,
-  MenuFoldOutlined,
-  MenuUnfoldOutlined,
+  ApartmentOutlined,
+  BarChartOutlined,
+  BorderOutlined,
+  CloseOutlined,
+  DownOutlined,
+  FullscreenExitOutlined,
+  LineOutlined,
   PlusOutlined,
-  PrinterOutlined,
-  TeamOutlined,
-  UnorderedListOutlined,
+  SearchOutlined,
+  SettingOutlined,
 } from '@ant-design/icons';
-import { AttendeesPage } from '@/features/attendee';
-import { CheckinPage, RecordsPage } from '@/features/checkin';
-import { MeetingDashboard, useMeetingStore } from '@/features/meeting';
-import { PrinterSettingsPage } from '@/features/printing';
-import { TemplateEditorPage } from '@/features/template';
-import UpdateChecker from '@/features/update/UpdateChecker';
+import { CheckinPage } from '@/features/checkin';
+import { CreateMeetingPage, useMeetingStore } from '@/features/meeting';
+import { KanbanPage } from '@/features/kanban';
+import { SystemSettingsPage } from '@/features/settings';
+import { windowApi } from '@/shared/api';
 
-const { Header, Sider, Content } = Layout;
-const { Title, Text } = Typography;
-const { useBreakpoint } = Grid;
+type ShellView = 'checkin' | 'create-meeting' | 'kanban' | 'settings';
+const WINDOW_DRAG_THRESHOLD = 4;
 
-type PageKey =
-  | 'meetings'
-  | 'attendees'
-  | 'checkin'
-  | 'records'
-  | 'templates'
-  | 'printer';
-
-interface PageMeta {
-  title: string;
-  subtitle: string;
-  content: ReactNode;
+function formatSystemTime(value: Date) {
+  const year = value.getFullYear();
+  const month = String(value.getMonth() + 1).padStart(2, '0');
+  const day = String(value.getDate()).padStart(2, '0');
+  const hours = String(value.getHours()).padStart(2, '0');
+  const minutes = String(value.getMinutes()).padStart(2, '0');
+  return `${year}-${month}-${day} ${hours}:${minutes}`;
 }
 
-const PAGE_STORAGE_KEY = 'checkin-tauri/current-page';
-
-const pageRegistry: Record<PageKey, PageMeta> = {
-  meetings: {
-    title: '\u4f1a\u8bae\u7ba1\u7406',
-    subtitle:
-      '\u521b\u5efa\u4f1a\u8bae\u3001\u7ef4\u62a4\u65e5\u7a0b\u4e0e\u7b7e\u5230\u914d\u7f6e\u3002',
-    content: <MeetingDashboard />,
-  },
-  attendees: {
-    title: '\u53c2\u4f1a\u4eba\u7ba1\u7406',
-    subtitle: '\u5bfc\u5165\u540d\u5355\u3001\u73b0\u573a\u8865\u5f55\u4e0e\u6279\u91cf\u7ef4\u62a4\u3002',
-    content: <AttendeesPage />,
-  },
-  checkin: {
-    title: '\u7b7e\u5230\u53f0',
-    subtitle: '\u9762\u5411\u524d\u53f0\u9ad8\u9891\u64cd\u4f5c\uff0c\u7a81\u51fa\u68c0\u7d22\u4e0e\u786e\u8ba4\u3002',
-    content: <CheckinPage />,
-  },
-  records: {
-    title: '\u7b7e\u5230\u8bb0\u5f55',
-    subtitle: '\u67e5\u770b\u8fdb\u5ea6\u3001\u8ddf\u8e2a\u8865\u6253\u72b6\u6001\u5e76\u5bfc\u51fa\u8bb0\u5f55\u3002',
-    content: <RecordsPage />,
-  },
-  templates: {
-    title: '\u80f8\u724c\u6a21\u677f',
-    subtitle: '\u7ef4\u62a4\u80f8\u724c\u6a21\u677f\u4e0e\u9884\u89c8\u6548\u679c\u3002',
-    content: <TemplateEditorPage />,
-  },
-  printer: {
-    title: '\u6253\u5370\u8bbe\u7f6e',
-    subtitle: '\u9009\u62e9\u6253\u5370\u673a\u5e76\u914d\u7f6e\u81ea\u52a8\u6253\u5370\u7b56\u7565\u3002',
-    content: <PrinterSettingsPage />,
-  },
-};
-
-const menuItems = [
-  { key: 'meetings', icon: <CalendarOutlined />, label: '\u4f1a\u8bae' },
-  { key: 'attendees', icon: <TeamOutlined />, label: '\u53c2\u4f1a\u4eba' },
-  { key: 'checkin', icon: <CheckCircleOutlined />, label: '\u7b7e\u5230' },
-  { key: 'records', icon: <UnorderedListOutlined />, label: '\u8bb0\u5f55' },
-  { key: 'templates', icon: <IdcardOutlined />, label: '\u6a21\u677f' },
-  { key: 'printer', icon: <PrinterOutlined />, label: '\u6253\u5370' },
-];
-
-function readStoredPage(): PageKey {
-  if (typeof window === 'undefined') {
-    return 'meetings';
-  }
-
-  const stored = window.localStorage.getItem(PAGE_STORAGE_KEY);
-  if (stored && stored in pageRegistry) {
-    return stored as PageKey;
-  }
-
-  return 'meetings';
+function formatMeetingDate(value: string) {
+  const date = new Date(value);
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  return `${year}.${month}.${day}`;
 }
 
-function getMeetingStatusMeta(status: string) {
+function getMeetingStatusText(status: string) {
   switch (status) {
     case 'active':
-      return { label: '\u8fdb\u884c\u4e2d', color: 'green' as const };
+      return 'NOW';
     case 'completed':
-      return { label: '\u5df2\u7ed3\u675f', color: 'default' as const };
+      return 'ENDED';
     default:
-      return { label: '\u8349\u7a3f', color: 'gold' as const };
+      return 'DRAFT';
   }
+}
+
+function EventSwitchModal({
+  open,
+  searchValue,
+  onSearchChange,
+  onClose,
+  onCreateNew,
+  onSelectMeeting,
+  meetings,
+  currentMeetingId,
+}: {
+  open: boolean;
+  searchValue: string;
+  onSearchChange: (value: string) => void;
+  onClose: () => void;
+  onCreateNew: () => void;
+  onSelectMeeting: (meetingId: number) => void;
+  meetings: Array<{
+    id: number;
+    title: string;
+    start_time: string;
+    end_time: string;
+    location?: string;
+    status: string;
+  }>;
+  currentMeetingId?: number;
+}) {
+  const filteredMeetings = useMemo(() => {
+    const keyword = searchValue.trim().toLowerCase();
+    if (!keyword) {
+      return meetings;
+    }
+
+    return meetings.filter((meeting) =>
+      [meeting.title, meeting.location || '', meeting.status]
+        .join(' ')
+        .toLowerCase()
+        .includes(keyword)
+    );
+  }, [meetings, searchValue]);
+
+  const currentMeeting =
+    meetings.find((meeting) => meeting.id === currentMeetingId) || meetings[0] || null;
+
+  if (!open) {
+    return null;
+  }
+
+  return (
+    <>
+      <button
+        type="button"
+        className="event-switch-backdrop"
+        aria-label="关闭活动切换弹窗"
+        onClick={onClose}
+      />
+      <div className="event-switch-layer" role="dialog" aria-modal="true" aria-label="切换活动">
+        <section className="event-switch-modal">
+          <div className="event-switch-modal__header">
+            <div>
+              <p className="event-switch-modal__eyebrow">CURRENT SCOPE</p>
+              <h2 className="event-switch-modal__title">
+                {currentMeeting?.title || '请选择活动'}
+              </h2>
+            </div>
+            <button
+              type="button"
+              className="event-switch-modal__close"
+              aria-label="关闭"
+              onClick={onClose}
+            >
+              <CloseOutlined />
+            </button>
+          </div>
+
+          <div className="event-switch-modal__search">
+            <SearchOutlined className="event-switch-modal__search-icon" />
+            <Input
+              value={searchValue}
+              onChange={(event) => onSearchChange(event.target.value)}
+              placeholder="快速查找历史活动或关键词..."
+              className="event-switch-modal__search-input"
+            />
+          </div>
+
+          <div className="event-switch-modal__list">
+            {filteredMeetings.map((meeting) => {
+              const active = meeting.id === currentMeetingId;
+              const ended = meeting.status === 'completed';
+              return (
+                <button
+                  key={meeting.id}
+                  type="button"
+                  className={`event-switch-item ${active ? 'event-switch-item--active' : ''}`}
+                  onClick={() => onSelectMeeting(meeting.id)}
+                >
+                  <div className="event-switch-item__main">
+                    <div className="event-switch-item__head">
+                      <span className="event-switch-item__name">{meeting.title}</span>
+                      {active ? (
+                        <span className="event-switch-item__tag">{getMeetingStatusText(meeting.status)}</span>
+                      ) : null}
+                    </div>
+                    <span className="event-switch-item__date">
+                      {formatMeetingDate(meeting.start_time)}
+                    </span>
+                  </div>
+                  <div className="event-switch-item__meta">
+                    <p className={`event-switch-item__percent ${ended ? 'is-muted' : ''}`}>
+                      {meeting.status === 'completed' ? '100%' : active ? '84%' : '92%'}
+                    </p>
+                    <div className="event-switch-item__track">
+                      <div
+                        className={`event-switch-item__fill ${ended ? 'is-muted' : ''}`}
+                        style={{ width: meeting.status === 'completed' ? '100%' : active ? '84%' : '92%' }}
+                      />
+                    </div>
+                  </div>
+                </button>
+              );
+            })}
+          </div>
+
+          <div className="event-switch-modal__footer">
+            <button type="button" className="event-switch-modal__primary" onClick={onCreateNew}>
+              <PlusOutlined />
+              <span>创建新活动</span>
+            </button>
+          </div>
+        </section>
+      </div>
+    </>
+  );
 }
 
 export default function AppShell() {
-  const screens = useBreakpoint();
-  const mobile = !screens.lg;
-  const [desktopCollapsed, setDesktopCollapsed] = useState(false);
-  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-  const [currentPage, setCurrentPage] = useState<PageKey>(readStoredPage);
-  const { meetings, currentMeeting, selectMeeting, loadMeetings } = useMeetingStore();
+  const [view, setView] = useState<ShellView>('checkin');
+  const [systemTime, setSystemTime] = useState(() => formatSystemTime(new Date()));
+  const [switchOpen, setSwitchOpen] = useState(false);
+  const [switchQuery, setSwitchQuery] = useState('');
+  const [isMaximized, setIsMaximized] = useState(false);
+  const dragCleanupRef = useRef<(() => void) | null>(null);
+  const { currentMeeting, meetings, loadMeetings, selectMeeting } = useMeetingStore();
 
   useEffect(() => {
     void loadMeetings();
   }, [loadMeetings]);
 
   useEffect(() => {
-    window.localStorage.setItem(PAGE_STORAGE_KEY, currentPage);
-  }, [currentPage]);
+    const timer = window.setInterval(() => {
+      setSystemTime(formatSystemTime(new Date()));
+    }, 60_000);
 
-  const collapsed = mobile ? !mobileMenuOpen : desktopCollapsed;
-  const currentMeta = pageRegistry[currentPage];
+    return () => window.clearInterval(timer);
+  }, []);
 
-  const meetingOptions = useMemo(
-    () => meetings.map((meeting) => ({ value: meeting.id, label: meeting.title })),
-    [meetings]
-  );
+  useEffect(() => {
+    const checkMaximized = async () => {
+      const maximized = await windowApi.isMaximized();
+      setIsMaximized(maximized);
+    };
 
-  const currentMeetingStatus = currentMeeting
-    ? getMeetingStatusMeta(currentMeeting.status)
-    : null;
+    void checkMaximized();
 
-  const toggleMenu = () => {
-    if (mobile) {
-      setMobileMenuOpen((value) => !value);
+    const handleResize = () => {
+      void checkMaximized();
+    };
+
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
+
+  useEffect(() => () => dragCleanupRef.current?.(), []);
+
+  const hasMeetings = meetings.length > 0;
+  const showEmpty = !hasMeetings && view !== 'create-meeting';
+  const liveTitle = currentMeeting?.title || meetings[0]?.title || '系统待机';
+
+  const handleOpenCreate = () => {
+    setSwitchOpen(false);
+    setSwitchQuery('');
+    setView('create-meeting');
+  };
+
+  const handleMinimize = () => {
+    void windowApi.minimize().catch(() => undefined);
+  };
+
+  const handleToggleMaximize = async () => {
+    await windowApi.toggleMaximize();
+    const maximized = await windowApi.isMaximized();
+    setIsMaximized(maximized);
+  };
+
+  const handleClose = () => {
+    void windowApi.close().catch(() => undefined);
+  };
+
+  const handleSelectMeeting = (meetingId: number) => {
+    const target = meetings.find((meeting) => meeting.id === meetingId);
+    if (!target) {
+      return;
+    }
+    selectMeeting(target);
+    setSwitchOpen(false);
+    setSwitchQuery('');
+  };
+
+  const handleWindowDragStart = (event: ReactMouseEvent<HTMLDivElement>) => {
+    if (event.button !== 0 || event.detail > 1) {
       return;
     }
 
-    setDesktopCollapsed((value) => !value);
+    dragCleanupRef.current?.();
+
+    const startX = event.clientX;
+    const startY = event.clientY;
+
+    const cleanup = () => {
+      window.removeEventListener('mousemove', handleMouseMove);
+      window.removeEventListener('mouseup', handleMouseUp);
+      dragCleanupRef.current = null;
+    };
+
+    const handleMouseMove = (moveEvent: MouseEvent) => {
+      const deltaX = Math.abs(moveEvent.clientX - startX);
+      const deltaY = Math.abs(moveEvent.clientY - startY);
+      if (Math.max(deltaX, deltaY) < WINDOW_DRAG_THRESHOLD) {
+        return;
+      }
+
+      cleanup();
+      void windowApi.startDragging().catch(() => undefined);
+    };
+
+    const handleMouseUp = () => {
+      cleanup();
+    };
+
+    dragCleanupRef.current = cleanup;
+    window.addEventListener('mousemove', handleMouseMove);
+    window.addEventListener('mouseup', handleMouseUp);
   };
 
-  const handlePageChange = (page: PageKey) => {
-    setCurrentPage(page);
-    if (mobile) {
-      setMobileMenuOpen(false);
-    }
+  const handleWindowDoubleClick = (event: ReactMouseEvent<HTMLDivElement>) => {
+    event.preventDefault();
+    void handleToggleMaximize().catch(() => undefined);
   };
 
   return (
-    <Layout className="app-shell">
-      {mobile && mobileMenuOpen ? (
+    <div className="app-shell">
+      <div className="window-chrome">
         <div
-          className="app-shell__overlay"
-          onClick={() => setMobileMenuOpen(false)}
-        />
-      ) : null}
-      <Sider
-        className="app-shell__sider"
-        width={220}
-        collapsedWidth={mobile ? 0 : 76}
-        collapsed={collapsed}
-        trigger={null}
-        breakpoint="lg"
-      >
-        <div className="app-shell__brand">
-          <Title level={4} className="app-shell__brand-title">
-            {collapsed && !mobile ? 'CI' : '\u4f1a\u52a1\u7b7e\u5230'}
-          </Title>
-          {!collapsed ? (
-            <Text className="app-shell__brand-text">
-              {'\u8f7b\u91cf\u3001\u6e05\u6670\u3001\u9762\u5411\u73b0\u573a\u6267\u884c'}
-            </Text>
-          ) : null}
-        </div>
-
-        <Menu
-          className="app-shell__menu"
-          mode="inline"
-          selectedKeys={[currentPage]}
-          items={menuItems}
-          onClick={({ key }) => handlePageChange(key as PageKey)}
-        />
-      </Sider>
-
-      <Layout className="app-shell__main">
-        <Header className="app-shell__header">
-          <Space className="app-shell__header-row" align="start">
-            <Space size={14} align="start">
-              <Button
-                type="text"
-                size="large"
-                icon={collapsed ? <MenuUnfoldOutlined /> : <MenuFoldOutlined />}
-                onClick={toggleMenu}
-              />
-              <div>
-                <Title level={3} className="page-frame__hero-title">
-                  {currentMeta.title}
-                </Title>
-                <Text className="page-frame__hero-text">{currentMeta.subtitle}</Text>
-              </div>
-            </Space>
-
-            <Space wrap size={10} className="app-shell__actions">
-              {currentMeeting && currentMeetingStatus ? (
-                <Tag color={currentMeetingStatus.color}>
-                  {currentMeeting.title} · {currentMeetingStatus.label}
-                </Tag>
-              ) : (
-                <Tag>{'\u672a\u9009\u62e9\u4f1a\u8bae'}</Tag>
-              )}
-
-              <Select
-                showSearch
-                value={currentMeeting?.id}
-                placeholder={'\u5207\u6362\u4f1a\u8bae'}
-                className="app-shell__meeting-select"
-                onChange={(id) => {
-                  const target = meetings.find((meeting) => meeting.id === id);
-                  selectMeeting(target || null);
-                }}
-                options={meetingOptions}
-                filterOption={(input, option) =>
-                  String(option?.label || '')
-                    .toLowerCase()
-                    .includes(input.toLowerCase())
-                }
-                allowClear
-              />
-
-              <UpdateChecker />
-
-              <Button
-                type="primary"
-                icon={<PlusOutlined />}
-                onClick={() => handlePageChange('meetings')}
-              >
-                {'\u65b0\u5efa\u4f1a\u8bae'}
-              </Button>
-            </Space>
-          </Space>
-        </Header>
-
-        <Content className="app-shell__content">
-          <div className="app-shell__content-inner">
-            <div className="page-frame">{currentMeta.content}</div>
+          className="window-chrome__drag"
+          data-tauri-drag-region
+          onMouseDown={handleWindowDragStart}
+          onDoubleClick={handleWindowDoubleClick}
+        >
+          <span className="window-chrome__brand-mark" aria-hidden="true" />
+          <div className="window-chrome__brand-copy">
+            <span className="window-chrome__title">Imprint</span>
+            <span className="window-chrome__subtitle">会务签到</span>
           </div>
-        </Content>
-      </Layout>
-    </Layout>
+        </div>
+        <div className="window-chrome__actions">
+          <button
+            type="button"
+            className="window-chrome__action"
+            aria-label="最小化"
+            onMouseDown={(event) => event.stopPropagation()}
+            onClick={(event) => {
+              event.stopPropagation();
+              handleMinimize();
+            }}
+          >
+            <LineOutlined />
+          </button>
+          <button
+            type="button"
+            className="window-chrome__action"
+            aria-label="最大化或还原"
+            onMouseDown={(event) => event.stopPropagation()}
+            onClick={(event) => {
+              event.stopPropagation();
+              handleToggleMaximize();
+            }}
+          >
+            {isMaximized ? <FullscreenExitOutlined /> : <BorderOutlined />}
+          </button>
+          <button
+            type="button"
+            className="window-chrome__action window-chrome__action--danger"
+            aria-label="关闭"
+            onMouseDown={(event) => event.stopPropagation()}
+            onClick={(event) => {
+              event.stopPropagation();
+              handleClose();
+            }}
+          >
+            <CloseOutlined />
+          </button>
+        </div>
+      </div>
+      <main className={`app-shell__main ${switchOpen ? 'app-shell__main--modal' : ''} ${showEmpty ? 'app-shell__main--empty' : ''}`}>
+        <header className={`topbar ${showEmpty ? 'topbar--empty' : ''}`}>
+          <div className={`topbar__left ${showEmpty ? 'topbar__left--empty' : ''}`}>
+            {showEmpty ? (
+              <>
+                <span className="topbar__status-dot topbar__status-dot--neutral" />
+                <span className="topbar__status-text">LIVE: 系统待机</span>
+              </>
+            ) : (
+              <div className="topbar__live">
+                <span className="topbar__indicator-dot" />
+                <span className="topbar__live-text">LIVE: {liveTitle}</span>
+                <button
+                  type="button"
+                  className="topbar__switcher"
+                  onClick={() => setSwitchOpen(true)}
+                >
+                  <span className="topbar__switcher-text">切换 / 新建</span>
+                  <DownOutlined className="topbar__switcher-icon" />
+                </button>
+              </div>
+            )}
+          </div>
+
+          <div className="topbar__right">
+            <div className="topbar__status-group">
+              <div className="topbar__status-item">
+                <span className="topbar__status-dot topbar__status-dot--success" />
+                <span className="topbar__status-text">打印机: 正常</span>
+              </div>
+              <div className="topbar__status-item">
+                <span className="topbar__status-dot topbar__status-dot--success" />
+                <span className="topbar__status-text">网络: 在线</span>
+              </div>
+            </div>
+            <Button
+              type="text"
+              icon={<BarChartOutlined />}
+              className="topbar__action"
+              aria-label="活动看板"
+              onClick={() => setView('kanban')}
+            />
+            <Button
+              type="text"
+              icon={<SettingOutlined />}
+              className="topbar__action"
+              aria-label="设置"
+              onClick={() => setView('settings')}
+            />
+          </div>
+        </header>
+
+        {showEmpty ? (
+          <>
+            <div className="empty-state">
+              <div className="empty-state__backdrop" aria-hidden="true">
+                <div className="empty-state__glow" />
+              </div>
+
+              <section className="empty-state__panel">
+                <div className="empty-state__icon-shell">
+                  <ApartmentOutlined className="empty-state__icon" />
+                  <div className="empty-state__grid" aria-hidden="true" />
+                </div>
+
+                <h1 className="empty-state__title">暂无进行中的活动</h1>
+                <p className="empty-state__text">
+                  由于这是首次启动或所有活动已结束，请先创建一个活动以开始签到工作。
+                </p>
+
+                <div className="empty-state__actions">
+                  <button
+                    type="button"
+                    className="empty-state__primary"
+                    onClick={handleOpenCreate}
+                  >
+                    <PlusOutlined />
+                    <span>创建新活动</span>
+                  </button>
+                </div>
+              </section>
+            </div>
+
+            <footer className="standby-footer">
+              <div className="standby-footer__left">
+                <div className="standby-footer__hint">
+                  <kbd className="standby-footer__key">N</kbd>
+                  <span className="standby-footer__text">新建活动</span>
+                </div>
+                <div className="standby-footer__hint">
+                  <kbd className="standby-footer__key">I</kbd>
+                  <span className="standby-footer__text">导入配置</span>
+                </div>
+              </div>
+              <div className="standby-footer__right">Standby Mode</div>
+            </footer>
+          </>
+        ) : (
+          <>
+            <div className="workspace">
+              <div className="workspace__inner">
+                {view === 'create-meeting' ? (
+                  <CreateMeetingPage
+                    onCancel={() => setView('checkin')}
+                    onCreated={() => setView('checkin')}
+                  />
+                ) : view === 'kanban' ? (
+                  <KanbanPage onBack={() => setView('checkin')} />
+                ) : view === 'settings' ? (
+                  <SystemSettingsPage onBack={() => setView('checkin')} />
+                ) : (
+                  <CheckinPage />
+                )}
+              </div>
+            </div>
+
+            <footer className="system-footer">
+              <div className="system-footer__left">
+                <div className="system-footer__hint">
+                  <kbd className="system-footer__key">F5</kbd>
+                  <span className="system-footer__text">重印上张</span>
+                </div>
+                <div className="system-footer__hint">
+                  <kbd className="system-footer__key">ESC</kbd>
+                  <span className="system-footer__text">清除输入</span>
+                </div>
+              </div>
+              <div className="system-footer__right">SYSTEM READY: {systemTime}</div>
+            </footer>
+          </>
+        )}
+      </main>
+
+      <EventSwitchModal
+        open={switchOpen}
+        searchValue={switchQuery}
+        onSearchChange={setSwitchQuery}
+        onClose={() => {
+          setSwitchOpen(false);
+          setSwitchQuery('');
+        }}
+        onCreateNew={handleOpenCreate}
+        onSelectMeeting={handleSelectMeeting}
+        meetings={meetings}
+        currentMeetingId={currentMeeting?.id}
+      />
+    </div>
   );
 }
